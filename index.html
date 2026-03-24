@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphic Workspace</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --glass-bg: rgba(30, 40, 50, 0.45);
+            --glass-heavy: rgba(20, 25, 30, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-btn: rgba(255, 255, 255, 0.1);
+            --glass-btn-hover: rgba(255, 255, 255, 0.2);
+            --glass-active: rgba(255, 255, 255, 0.25);
+        }
+
+        .theme-light {
+            --text-main: #111827;
+            --text-muted: rgba(17, 24, 39, 0.7);
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-heavy: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --glass-btn: rgba(0, 0, 0, 0.05);
+            --glass-btn-hover: rgba(0, 0, 0, 0.1);
+            --glass-active: rgba(0, 0, 0, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: var(--text-main);
+            overflow-x: hidden;
+            user-select: none;
+            transition: color 0.3s ease;
+        }
+
+        /* Hide scrollbars for specific elements */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .theme-light .text-white { color: var(--text-main) !important; }
+        .theme-light .text-white\/90 { color: var(--text-main) !important; }
+        .theme-light .text-white\/80, .theme-light .text-white\/70, .theme-light .text-white\/60 { color: var(--text-muted) !important; }
+        .theme-light .bg-white\/5 { background-color: rgba(0,0,0,0.05) !important; }
+        .theme-light .bg-white\/10 { background-color: rgba(0,0,0,0.1) !important; }
+        .theme-light .border-white\/10 { border-color: rgba(0,0,0,0.1) !important; }
+        .theme-light .bg-black\/50 { background-color: rgba(255,255,255,0.7) !important; }
+        .theme-light .bg-black\/60 { background-color: rgba(255,255,255,0.85) !important; }
+
+        .poster-font { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.15em; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(150,150,150,0.4); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(150,150,150,0.6); }
+
+        .glass-panel {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .glass-panel-heavy {
+            background-color: var(--glass-heavy);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .glass-button {
+            background-color: var(--glass-btn);
+            transition: all 0.2s ease;
+            color: var(--text-main);
+        }
+        .glass-button:hover { background-color: var(--glass-btn-hover); }
+        
+        .glass-button-active {
+            background-color: var(--glass-active);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        /* Edit Mode Styles */
+        .widget-container { position: absolute; display: flex; }
+        
+        .edit-mode .widget-card {
+            border: 2px dashed rgba(150, 150, 150, 0.8);
+            cursor: move;
+            resize: both;
+            overflow: hidden;
+            min-width: 150px;
+            min-height: 150px;
+        }
+        
+        .drag-handle-overlay, .edit-content-overlay { display: none; }
+        .edit-mode .drag-handle-overlay { display: flex; }
+        .edit-mode .edit-content-overlay { display: flex; }
+
+        #sidebar { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; }
+        .sidebar-hidden { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .sidebar-visible { transform: translateX(0); opacity: 1; pointer-events: auto; }
+
+        #bg-reposition-area { cursor: grab; }
+        #bg-reposition-area:active { cursor: grabbing; }
+        input:focus, textarea:focus { outline: none; border-color: rgba(150,150,150,0.5); }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-y-auto snap-y snap-mandatory scroll-smooth antialiased transition-colors duration-500">
+
+    <!-- Background -->
+    <div class="fixed inset-0 -z-10 bg-black">
+        <img id="bg-image" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" class="w-full h-full object-cover transition-all duration-500" style="object-position: 50% 50%;" />
+        <video id="bg-video" src="" autoplay loop muted class="w-full h-full object-cover hidden" style="object-position: 50% 50%;"></video>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 theme-light:opacity-50"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <nav id="sidebar" class="fixed z-50 left-6 top-1/2 -translate-y-1/2 glass-panel py-6 px-3 flex flex-col items-center gap-6 rounded-full sidebar-hidden">
+        <!-- Edit Layout -->
+        <button onclick="toggleEditMode()" class="p-3 rounded-full glass-button group relative">
+            <i data-lucide="layout-grid" class="w-5 h-5"></i>
+            <span class="absolute left-14 opacity-0 group-hover:opacity-100 bg-black/80 px-2 py-1 rounded text-sm pointer-events-none whitespace-nowrap text-white">Edit Layout</span>
+        </button>
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" class="p-3 rounded-full glass-button group relative">
+            <i data-lucide="sun" class="w-5 h-5"></i>
+            <span class="absolute left-14 opacity-0 group-hover:opacity-100 bg-black/80 px-2 py-1 rounded text-sm pointer-events-none whitespace-nowrap text-white">Toggle Theme</span>
+        </button>
+        <!-- Background Quick (Star) -->
+        <button onclick="openSettingsModal('background')" class="p-3 rounded-full glass-button group relative">
+            <i data-lucide="star" class="w-5 h-5"></i>
+            <span class="absolute left-14 opacity-0 group-hover:opacity-100 bg-black/80 px-2 py-1 rounded text-sm pointer-events-none whitespace-nowrap text-white">Background</span>
+        </button>
+        <!-- Settings -->
+        <button onclick="openSettingsModal('widgets')" class="p-3 rounded-full glass-button group relative">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+            <span class="absolute left-14 opacity-0 group-hover:opacity-100 bg-black/80 px-2 py-1 rounded text-sm pointer-events-none whitespace-nowrap text-white">Settings</span>
+        </button>
+        <!-- Help -->
+        <button onclick="document.getElementById('dev-info').scrollIntoView({behavior: 'smooth'})" class="p-3 rounded-full glass-button group relative mt-4">
+            <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </button>
+    </nav>
+
+    <!-- SECTION 1: Dashboard -->
+    <section id="dashboard" class="relative h-screen w-full snap-start overflow-hidden">
+        
+        <!-- Welcome Text Widget -->
+        <div id="widget-welcomeCard" class="widget-container z-10" style="left: 50%; transform: translateX(-50%); top: 40px; width: auto; height: auto;">
+            <div class="widget-card relative glass-panel rounded-3xl px-12 py-6 w-full h-full flex flex-col items-center justify-center transition-all duration-300">
+                <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
+                    <button class="p-2 bg-black/60 backdrop-blur-md rounded-lg drag-handle hover:bg-white/20 shadow"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <div class="text-center mt-2 w-full">
+                    <p class="text-sm font-semibold tracking-wide mb-2 opacity-80">Welcome, <span class="opacity-100">USER</span></p>
+                    <h1 class="poster-font text-5xl md:text-7xl drop-shadow-lg leading-none">YOUR WORKSPACE</h1>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Widget -->
+        <div id="widget-dateCard" class="widget-container z-10" style="left: 40px; top: 40px; width: 180px; height: 180px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col justify-center items-start transition-all duration-300">
+                <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
+                    <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <span class="text-xs font-bold tracking-[0.2em] uppercase opacity-70 live-weekday">MONDAY</span>
+                <span class="text-6xl font-black tracking-tighter my-1 live-day">23</span>
+                <span class="text-lg font-bold tracking-[0.2em] uppercase opacity-90 live-month">MAR</span>
+            </div>
+        </div>
+
+        <!-- Clock Widget -->
+        <div id="widget-clockCard" class="widget-container z-10" style="right: 40px; top: 40px; width: 320px; height: 160px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col justify-center transition-all duration-300">
+                <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
+                    <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-5xl md:text-6xl font-black tracking-tighter live-time">11:12:14</span>
+                    <span class="text-xl font-bold opacity-60 live-ampm">PM</span>
+                </div>
+                <span class="text-sm font-medium opacity-60 mt-2 live-fulldate">Monday, March 23, 2026</span>
+            </div>
+        </div>
+
+        <!-- Photos Widget -->
+        <div id="widget-photosCard" class="widget-container z-10 hidden" style="left: 40px; top: 250px; width: 220px; height: 220px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-3 w-full h-full flex flex-col transition-all duration-300 group">
+                <button onclick="togglePhotoPrivacy()" class="absolute top-4 left-4 z-30 p-1.5 bg-black/50 backdrop-blur-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-white hover:bg-white/20 shadow">
+                    <i id="photo-privacy-icon" data-lucide="eye-off" class="w-4 h-4"></i>
+                </button>
+                <div class="drag-handle-overlay absolute top-2 right-2 gap-2 z-50">
+                    <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <img id="display-photo-widget" src="https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=400" class="w-full h-full object-cover rounded-[1.5rem] pointer-events-none transition-opacity duration-300" />
+                <div class="edit-content-overlay absolute inset-0 bg-black/60 rounded-[2rem] items-center justify-center flex-col gap-2 z-40 pointer-events-auto">
+                    <label class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold cursor-pointer text-white backdrop-blur-md transition-all">
+                        Upload Photo
+                        <input type="file" accept="image/*" class="hidden" onchange="updatePhotoWidget(event)">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Music Widget (Spotify / Local) -->
+        <div id="widget-musicCard" class="widget-container z-10 hidden" style="right: 40px; bottom: 250px; width: 320px; height: 180px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-4 w-full h-full flex flex-col transition-all duration-300 overflow-hidden group">
+                <div class="drag-handle-overlay absolute top-2 right-2 gap-2 z-50">
+                    <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <div id="music-player-container" class="w-full h-full flex flex-col justify-center">
+                    <iframe id="music-frame" src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" class="rounded-xl"></iframe>
+                    <audio id="local-audio-player" controls class="w-full hidden mt-2 rounded-lg"></audio>
+                </div>
+                <div class="edit-content-overlay absolute inset-0 bg-black/80 rounded-[2rem] flex-col justify-center px-6 gap-3 z-40 pointer-events-auto">
+                    <p class="text-xs font-bold text-white mb-1">Set Audio Source</p>
+                    <input type="text" id="music-link-input" placeholder="Paste Embed Code or Playlist Link" class="w-full bg-white/10 text-white rounded-lg px-3 py-2 text-sm border border-white/20" />
+                    <div class="flex gap-2">
+                        <button onclick="updateMusicEmbed()" class="flex-1 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-xs font-bold text-white">Set Media</button>
+                        <label class="flex-1 bg-white/20 hover:bg-white/30 py-2 text-center rounded-lg text-xs font-bold cursor-pointer text-white">
+                            Upload Local
+                            <input type="file" accept="audio/*" class="hidden" onchange="updateLocalAudio(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorites Widget -->
+        <div id="widget-favoritesCard" class="widget-container z-10" style="left: 40px; bottom: 40px; width: 220px; height: 260px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col transition-all duration-300">
+                <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
+                    <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <span class="text-sm font-bold mb-4 block opacity-90">Favorites</span>
+                <!-- Hidden Horizontal scrollbar via custom CSS class -->
+                <div id="favorites-grid" class="grid grid-cols-3 gap-4 flex-1 content-start overflow-y-auto overflow-x-hidden no-scrollbar pr-1 pb-2">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Note Widget -->
+        <div id="widget-noteCard" class="widget-container z-10 hidden" style="right: 40px; bottom: 40px; width: 280px; height: 200px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col transition-all duration-300">
+                <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
+                    <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
+                </div>
+                <span class="text-sm font-bold mb-2 block opacity-90">Quick Note</span>
+                <textarea id="note-textarea" oninput="saveState()" class="flex-1 w-full h-full bg-transparent border-none resize-none outline-none opacity-80 text-sm" placeholder="Type here..."></textarea>
+            </div>
+        </div>
+
+        <!-- Edit Mode Action Buttons -->
+        <div id="edit-actions" class="absolute bottom-10 right-10 z-50 hidden flex gap-4">
+            <button onclick="openSettingsModal()" class="px-6 py-2.5 glass-panel rounded-xl font-medium text-sm hover:bg-white/10 shadow-lg">Settings</button>
+            <button onclick="toggleEditMode()" class="px-8 py-2.5 bg-green-500/80 backdrop-blur-md border border-white/30 rounded-xl font-bold text-sm hover:bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)] transition-colors">Done</button>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce opacity-50 z-20 pointer-events-none">
+            <i data-lucide="chevron-down" class="w-8 h-8"></i>
+        </div>
+    </section>
+
+    <!-- SECTION 2: Navigation Tools -->
+    <section class="relative min-h-screen w-full snap-start flex flex-col items-center justify-center p-12 z-20">
+        <div class="w-full max-w-5xl">
+            <h2 class="text-3xl font-bold mb-10 opacity-90 tracking-wide text-center">Quick Navigation</h2>
+            <div id="tools-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 3: Developer Info -->
+    <section id="dev-info" class="relative min-h-screen w-full snap-start flex items-center justify-center p-12 z-20 bg-black/60 theme-light:bg-white/60 backdrop-blur-xl border-t border-white/10 theme-light:border-black/10">
+        <div class="glass-panel max-w-3xl w-full p-10 rounded-[2rem]">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="p-3 bg-blue-500/20 rounded-xl"><i data-lucide="terminal" class="w-8 h-8 text-blue-500 theme-light:text-blue-600"></i></div>
+                <h2 class="text-3xl font-bold">System Information</h2>
+            </div>
+            <div class="space-y-6 opacity-80 text-base leading-relaxed">
+                <div>
+                    <h3 class="text-lg font-semibold mb-1">Purpose</h3>
+                    <p>A unified, responsive workspace replacing standard new-tab screens with a highly customizable glassmorphic dashboard.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-1">Guide</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Hover on the left edge to reveal the dynamic sidebar.</li>
+                        <li>Click the Grid icon in the sidebar to enter Edit Mode. Drag cards to reposition them, drag the bottom-right corner to resize them.</li>
+                        <li>Everything you do is automatically saved to LocalStorage! File uploads use browser's IndexedDB to save seamlessly.</li>
+                    </ul>
+                </div>
+                <div class="pt-6 border-t border-white/10 theme-light:border-black/10 flex justify-between items-center text-sm">
+                    <p><span class="opacity-50">Design Pattern:</span> Glassmorphism / Spatial</p>
+                    <p><span class="opacity-50">Version:</span> <span class="font-mono text-blue-500">v6.0.0-PersistentDB</span></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODALS -->
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/40 backdrop-blur-md z-[100] hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="glass-panel-heavy w-full max-w-5xl h-[75vh] rounded-[2rem] flex overflow-hidden shadow-2xl relative" onclick="event.stopPropagation()">
+            
+            <div class="w-64 border-r border-white/10 bg-white/5 p-6 flex flex-col shrink-0">
+                <h2 class="text-2xl font-bold mb-8">Customize</h2>
+                <nav class="space-y-2 flex-1">
+                    <button onclick="switchSettingsTab('widgets')" id="tab-btn-widgets" class="w-full text-left px-4 py-3 rounded-xl font-medium glass-button-active transition-all">Widgets</button>
+                    <button onclick="switchSettingsTab('background')" id="tab-btn-background" class="w-full text-left px-4 py-3 rounded-xl font-medium opacity-60 hover:opacity-100 transition-all">Background</button>
+                    <button onclick="switchSettingsTab('actions')" id="tab-btn-actions" class="w-full text-left px-4 py-3 rounded-xl font-medium opacity-60 hover:opacity-100 transition-all">Actions</button>
+                    <button onclick="switchSettingsTab('theme')" id="tab-btn-theme" class="w-full text-left px-4 py-3 rounded-xl font-medium opacity-60 hover:opacity-100 transition-all">Theme</button>
+                    <button onclick="switchSettingsTab('music')" id="tab-btn-music" class="w-full text-left px-4 py-3 rounded-xl font-medium opacity-60 hover:opacity-100 transition-all">Music</button>
+                    <button onclick="switchSettingsTab('favorites')" id="tab-btn-favorites" class="w-full text-left px-4 py-3 rounded-xl font-medium opacity-60 hover:opacity-100 transition-all">Favorites</button>
+                </nav>
+            </div>
+
+            <div class="flex-1 flex flex-col min-w-0">
+                <div class="flex-1 p-8 overflow-y-auto pb-10 no-scrollbar">
+                    
+                    <div id="tab-widgets" class="settings-tab space-y-3">
+                        <!-- Toggles injected by JS -->
+                    </div>
+
+                    <div id="tab-background" class="settings-tab space-y-4 hidden">
+                        <h3 class="font-bold mb-4 opacity-90">Background Source</h3>
+                        <div class="bg-white/5 p-5 rounded-2xl mb-6 space-y-3">
+                            <label class="block w-full text-center py-3 bg-white/10 hover:bg-white/20 rounded-xl cursor-pointer text-sm font-bold transition-colors">
+                                Upload Photo/Video (Saved to device DB)
+                                <input type="file" accept="image/*, video/*" class="hidden" onchange="handleBgUpload(event, 'file')" />
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="quick-url-input" placeholder="URL or Local path (file:///C:/...)" class="flex-1 bg-black/30 theme-light:bg-white/30 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-white/30" />
+                                <button onclick="applyQuickBgUrl()" class="px-5 py-2 glass-button rounded-xl text-sm font-bold">Apply URL</button>
+                            </div>
+                            <button onclick="triggerBgRepositionCurrent()" class="w-full text-center py-3 glass-button rounded-xl text-sm font-bold mt-2">
+                                Adjust Position
+                            </button>
+                            <button onclick="resetBackground()" class="w-full text-center py-3 glass-button rounded-xl text-sm font-bold mt-2 text-red-400">
+                                Reset to default
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tab-actions" class="settings-tab space-y-4 hidden">
+                        <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
+                            <span class="font-medium text-sm">Toggle photos widget</span>
+                            <button onclick="toggleWidget('photosCard')" id="btn-photos-toggle" class="glass-button px-6 py-2 rounded-xl text-sm font-semibold w-24">Show</button>
+                        </div>
+                        <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
+                            <span class="font-medium text-sm">Switch sidebar mode</span>
+                            <button onclick="toggleSidebarMode()" id="btn-sidebar-mode" class="glass-button px-6 py-2 rounded-xl text-sm font-semibold">Sidebar: Dynamic</button>
+                        </div>
+                        <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
+                            <span class="font-medium text-sm">Switch light/dark theme</span>
+                            <button onclick="toggleTheme()" class="glass-button px-6 py-2 rounded-xl text-sm font-semibold">Toggle theme</button>
+                        </div>
+                        <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
+                            <span class="font-medium text-sm">Toggle time format</span>
+                            <button onclick="toggleTimeFormat()" id="btn-time-format" class="glass-button px-6 py-2 rounded-xl text-sm font-semibold w-24">12h</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-theme" class="settings-tab hidden">
+                        <h3 class="font-bold mb-4 opacity-90">Wallpapers</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div onclick="triggerBgReposition({url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop', type: 'image', isDb: false})" class="cursor-pointer group">
+                                <div class="h-28 rounded-xl bg-gray-500 overflow-hidden border-2 border-transparent group-hover:border-gray-300 transition-all"><img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400" class="w-full h-full object-cover"/></div>
+                                <p class="text-sm font-medium mt-2 opacity-80">Default</p>
+                            </div>
+                            <div onclick="triggerBgReposition({url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070', type: 'image', isDb: false})" class="cursor-pointer group">
+                                <div class="h-28 rounded-xl bg-gray-500 overflow-hidden border-2 border-transparent group-hover:border-gray-300 transition-all"><img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400" class="w-full h-full object-cover"/></div>
+                                <p class="text-sm font-medium mt-2 opacity-80">Aurora</p>
+                            </div>
+                            <div onclick="triggerBgReposition({url: 'https://images.unsplash.com/photo-1558486012-817176f84c6d?q=80&w=400', type: 'image', isDb: false})" class="cursor-pointer group">
+                                <div class="h-28 rounded-xl bg-gray-500 overflow-hidden border-2 border-transparent group-hover:border-gray-300 transition-all"><img src="https://images.unsplash.com/photo-1558486012-817176f84c6d?w=400" class="w-full h-full object-cover"/></div>
+                                <p class="text-sm font-medium mt-2 opacity-80">Sunset</p>
+                            </div>
+                            <div onclick="triggerBgReposition({url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?q=80&w=2026', type: 'image', isDb: false})" class="cursor-pointer group">
+                                <div class="h-28 rounded-xl bg-gray-500 overflow-hidden border-2 border-transparent group-hover:border-gray-300 transition-all"><img src="https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400" class="w-full h-full object-cover"/></div>
+                                <p class="text-sm font-medium mt-2 opacity-80">Ocean</p>
+                            </div>
+                        </div>
+                        
+                        <!-- My Themes -->
+                        <div class="mt-8 pt-6 border-t border-white/10">
+                            <h3 class="font-bold mb-4 opacity-90 flex items-center gap-2"><i data-lucide="image" class="w-5 h-5"></i> My Themes</h3>
+                            <div id="my-themes-container" class="grid grid-cols-2 gap-4">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-music" class="settings-tab hidden">
+                        <h3 class="font-bold mb-4 opacity-90">Spotify Playlists</h3>
+                        <div class="bg-white/5 p-5 rounded-2xl mb-6 space-y-3">
+                            <h4 class="text-sm font-semibold opacity-80">Add New Playlist</h4>
+                            <input type="text" id="playlist-name-input" placeholder="Playlist Name (e.g., Lofi Beats)" class="w-full bg-black/30 theme-light:bg-white/30 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-white/30" />
+                            <input type="text" id="playlist-url-input" placeholder="Spotify Share or Embed Link" class="w-full bg-black/30 theme-light:bg-white/30 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-white/30" />
+                            <button onclick="addPlaylist()" class="w-full glass-button py-2 rounded-xl text-sm font-bold">Save Playlist</button>
+                        </div>
+                        <div class="space-y-2" id="playlists-settings-list">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <div id="tab-favorites" class="settings-tab hidden">
+                        <h3 class="font-bold mb-4 opacity-90">Edit Favorites</h3>
+                        <div class="bg-white/5 p-5 rounded-2xl mb-6 space-y-3">
+                            <h4 class="text-sm font-semibold opacity-80">Add New Favorite</h4>
+                            <input type="text" id="fav-name-input" placeholder="Name (e.g., Netflix)" class="w-full bg-black/30 theme-light:bg-white/30 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-white/30" />
+                            <input type="text" id="fav-url-input" placeholder="URL (e.g., https://netflix.com)" class="w-full bg-black/30 theme-light:bg-white/30 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-white/30" />
+                            <button onclick="addFavorite()" class="w-full glass-button py-2 rounded-xl text-sm font-bold">Add to Favorites</button>
+                        </div>
+                        <div class="space-y-2" id="favorites-settings-list">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 border-t border-white/10 shrink-0 flex justify-between gap-4">
+                    <button onclick="resetLayout()" class="flex-1 py-3 glass-button rounded-xl font-bold text-sm">Reset layout</button>
+                    <button onclick="closeSettingsModal()" class="flex-1 py-3 glass-button rounded-xl font-bold text-sm bg-white/10 hover:bg-white/20">Done</button>
+                </div>
+            </div>
+            
+            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 opacity-50 hover:opacity-100"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+    </div>
+
+    <!-- Preview & Reposition Modal -->
+    <div id="reposition-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] hidden items-center justify-center p-6 opacity-0 transition-opacity duration-300">
+        <div class="glass-panel-heavy p-6 rounded-[2rem] w-full max-w-5xl flex flex-col gap-6" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center text-white">
+                <h3 class="font-bold text-lg">Preview & Adjust Background</h3>
+                <button onclick="closeModal('reposition-modal')" class="p-2 bg-white/10 hover:bg-white/20 rounded-full"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="relative w-full h-[50vh] bg-black/50 rounded-2xl overflow-hidden border border-white/10" id="bg-reposition-container">
+                <img id="bg-reposition-preview-img" src="" class="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none hidden" style="transform: scale(1.5);" />
+                <video id="bg-reposition-preview-vid" src="" autoplay loop muted class="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none hidden" style="transform: scale(1.5);"></video>
+                <div id="bg-reposition-area" class="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"></div>
+                <div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur px-3 py-1.5 rounded-lg text-xs font-medium border border-white/20 pointer-events-none text-white">Drag to reposition</div>
+            </div>
+            <div class="flex justify-between items-center text-white">
+                <div class="flex gap-3">
+                    <button onclick="centerBgReposition()" class="px-5 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium">Center</button>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeModal('reposition-modal')" class="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium">Cancel</button>
+                    <button onclick="applyBgPositionAndSave()" class="px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-xl text-sm font-bold shadow-lg">Apply Background</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Shortcut Modal -->
+    <div id="shortcut-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="glass-panel-heavy w-full max-w-md p-8 rounded-[2rem] flex flex-col gap-5" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center">
+                <h2 id="shortcut-modal-title" class="text-2xl font-bold">Add Shortcut</h2>
+                <button onclick="closeModal('shortcut-modal')" class="opacity-50 hover:opacity-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <input type="hidden" id="shortcut-id" value="">
+                <div>
+                    <label class="block text-sm font-medium opacity-70 mb-1">Shortcut Name</label>
+                    <input type="text" id="shortcut-name" placeholder="e.g. YouTube" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:border-gray-400" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium opacity-70 mb-1">URL or Local Path</label>
+                    <input type="text" id="shortcut-url" placeholder="https://" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:border-gray-400" />
+                </div>
+                
+                <div class="border-t border-white/10 pt-4 mt-2">
+                    <label class="block text-sm font-medium opacity-70 mb-3">Icon Source</label>
+                    <div class="flex gap-4 mb-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="icon-type" value="auto" checked onchange="toggleIconSourceUI()" class="accent-gray-400 w-4 h-4">
+                            <span class="text-sm">Auto Favicon</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="icon-type" value="local" onchange="toggleIconSourceUI()" class="accent-gray-400 w-4 h-4">
+                            <span class="text-sm">Local Image</span>
+                        </label>
+                    </div>
+                    
+                    <div id="local-icon-upload" class="hidden">
+                        <label class="block w-full text-center py-2 glass-button rounded-xl cursor-pointer text-sm font-medium border border-dashed border-white/30">
+                            Choose Image
+                            <input type="file" id="shortcut-local-file" accept="image/*" class="hidden" onchange="previewShortcutIcon(event)" />
+                        </label>
+                        <img id="shortcut-icon-preview" src="" class="hidden w-10 h-10 mt-3 rounded-lg object-cover mx-auto" />
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="saveShortcut()" class="w-full mt-4 glass-button bg-white/10 hover:bg-white/20 py-3 rounded-xl font-bold text-sm">Save Shortcut</button>
+        </div>
+    </div>
+
+    <script>
+        // --- IndexedDB for Persistent Background File Storage ---
+        const DB_NAME = 'GlassWorkspaceDB';
+        const STORE_NAME = 'MediaStore';
+
+        function initDB(callback) {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+            };
+            request.onsuccess = (e) => callback(e.target.result);
+            request.onerror = (e) => console.error("IndexedDB init error:", e);
+        }
+
+        function saveToDB(key, file, callback) {
+            initDB(db => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).put(file, key);
+                tx.oncomplete = () => { if(callback) callback(); };
+            });
+        }
+
+        function getFromDB(key, callback) {
+            initDB(db => {
+                const tx = db.transaction(STORE_NAME, "readonly");
+                const req = tx.objectStore(STORE_NAME).get(key);
+                req.onsuccess = () => callback(req.result);
+                req.onerror = () => callback(null);
+            });
+        }
+
+        function deleteFromDB(key) {
+            initDB(db => {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).delete(key);
+            });
+        }
+
+        // --- Global State & Persistence ---
+        const DEFAULT_STATE = {
+            sidebarMode: 'dynamic', 
+            theme: 'dark',          
+            timeFormat: '12h',      
+            bg: { url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop', type: 'image', isDb: false },
+            bgPos: { x: 50, y: 50 },
+            myThemes: [],
+            noteContent: '',
+            musicEmbedUrl: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
+            photoWidgetUrl: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=400',
+            photoHidden: false,
+            widgets: {
+                welcomeCard: { visible: true, layout: {} },
+                dateCard: { visible: true, layout: {} },
+                clockCard: { visible: true, layout: {} },
+                favoritesCard: { visible: true, layout: {} },
+                noteCard: { visible: false, layout: {} },
+                photosCard: { visible: false, layout: {} },
+                musicCard: { visible: false, layout: {} }
+            },
+            favoritesList: [
+                { id: 'f1', name: 'YouTube', url: 'https://youtube.com' },
+                { id: 'f2', name: 'Netflix', url: 'https://netflix.com' },
+                { id: 'f3', name: 'Spotify', url: 'https://open.spotify.com' },
+                { id: 'f4', name: 'ChatGPT', url: 'https://chat.openai.com' },
+                { id: 'f5', name: 'GitHub', url: 'https://github.com' },
+                { id: 'f6', name: 'Reddit', url: 'https://reddit.com' }
+            ],
+            toolsList: [
+                { id: 't1', title: 'Dashboard', url: '#', iconType: 'auto' },
+                { id: 't2', title: 'Local Files', url: 'file://C:/', iconType: 'auto' },
+                { id: 't3', title: 'Pomodoro', url: 'https://pomofocus.io', iconType: 'auto' }
+            ],
+            playlists: [
+                { id: 'p1', name: 'Chill Vibes', url: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M' }
+            ]
+        };
+
+        let state = JSON.parse(localStorage.getItem('glassWorkspaceState')) || DEFAULT_STATE;
+        state.widgets = { ...DEFAULT_STATE.widgets, ...state.widgets };
+        state.playlists = state.playlists || DEFAULT_STATE.playlists;
+        
+        let editMode = false;
+        let tempBg = { url: '', type: 'image', isDb: false };
+
+        function saveState() {
+            document.querySelectorAll('.widget-container').forEach(container => {
+                const key = container.id.replace('widget-', '');
+                if (state.widgets[key]) {
+                    state.widgets[key].layout = {
+                        left: container.style.left,
+                        top: container.style.top,
+                        right: container.style.right,
+                        bottom: container.style.bottom,
+                        transform: container.style.transform,
+                        width: container.querySelector('.widget-card').style.width,
+                        height: container.querySelector('.widget-card').style.height
+                    };
+                }
+            });
+            state.noteContent = document.getElementById('note-textarea').value;
+            
+            try {
+                localStorage.setItem('glassWorkspaceState', JSON.stringify(state));
+            } catch (e) {
+                console.error("Storage limit reached.", e);
+                alert("Storage limit reached! Please try a smaller image for the photo widget/icon.");
+            }
+        }
+
+        // --- Low-res Image Compression for Widgets to prevent Quota Issues ---
+        function compressImageForWidget(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const MAX = 400;
+                    let width = img.width; let height = img.height;
+                    if (width > height) { if (width > MAX) { height *= MAX / width; width = MAX; } } 
+                    else { if (height > MAX) { width *= MAX / height; height = MAX; } }
+                    canvas.width = width; canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    callback(canvas.toDataURL('image/jpeg', 0.6));
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Initialization ---
+        function loadApplication() {
+            lucide.createIcons();
+            
+            if (state.theme === 'light') document.body.classList.add('theme-light');
+            
+            // Apply Background
+            if (state.bg) {
+                if(state.bg.isDb) {
+                    getFromDB(state.bg.dbKey, (file) => {
+                        if (file) {
+                            state.bg.url = URL.createObjectURL(file);
+                            applyBgDOM(state.bg);
+                        } else {
+                            applyBgDOM(DEFAULT_STATE.bg); // fallback if lost from DB
+                        }
+                    });
+                } else {
+                    applyBgDOM(state.bg);
+                }
+                document.getElementById('bg-image').style.objectPosition = `${state.bgPos.x}% ${state.bgPos.y}%`;
+                document.getElementById('bg-video').style.objectPosition = `${state.bgPos.x}% ${state.bgPos.y}%`;
+            }
+
+            Object.keys(state.widgets).forEach(key => {
+                const wState = state.widgets[key];
+                toggleWidget(key, wState.visible, false);
+                const container = document.getElementById(`widget-${key}`);
+                if (container && wState.layout && wState.layout.left !== undefined) {
+                    container.style.left = wState.layout.left;
+                    container.style.top = wState.layout.top;
+                    container.style.right = wState.layout.right;
+                    container.style.bottom = wState.layout.bottom;
+                    container.style.transform = wState.layout.transform;
+                    const card = container.querySelector('.widget-card');
+                    if (card) {
+                        card.style.width = wState.layout.width || '100%';
+                        card.style.height = wState.layout.height || '100%';
+                    }
+                }
+            });
+
+            document.getElementById('note-textarea').value = state.noteContent;
+
+            if (state.musicEmbedUrl) {
+                document.getElementById('music-frame').src = state.musicEmbedUrl;
+                document.getElementById('music-link-input').value = state.musicEmbedUrl;
+            }
+            if (state.photoWidgetUrl) {
+                document.getElementById('display-photo-widget').src = state.photoWidgetUrl;
+            }
+            applyPhotoPrivacy();
+
+            document.getElementById('btn-sidebar-mode').textContent = `Sidebar: ${state.sidebarMode === 'dynamic' ? 'Dynamic' : 'Pinned'}`;
+            if (state.sidebarMode === 'static') document.getElementById('sidebar').classList.replace('sidebar-hidden', 'sidebar-visible');
+            document.getElementById('btn-time-format').textContent = state.timeFormat;
+
+            generateWidgetSettingsToggles();
+            renderToolsSection();
+            renderFavorites();
+            renderFavoritesSettings();
+            renderPlaylistsSettings();
+            renderMyThemes();
+            setInterval(updateClock, 1000);
+            updateClock();
+            setupSidebarInteractions();
+            setupWidgetDragging();
+            setupBackgroundRepositioner();
+        }
+
+        document.addEventListener("DOMContentLoaded", loadApplication);
+
+        // --- Sidebar & Theme Logic ---
+        function setupSidebarInteractions() {
+            const sidebar = document.getElementById('sidebar');
+            document.addEventListener('mousemove', (e) => {
+                if (state.sidebarMode !== 'dynamic' || editMode) return;
+                const isNearLeftEdge = e.clientX <= 30;
+                const isHoveringSidebar = sidebar.contains(e.target);
+
+                if (isNearLeftEdge || isHoveringSidebar) {
+                    if (sidebar.classList.contains('sidebar-hidden')) sidebar.classList.replace('sidebar-hidden', 'sidebar-visible');
+                } else {
+                    if (sidebar.classList.contains('sidebar-visible')) {
+                        sidebar.classList.replace('sidebar-visible', 'sidebar-hidden');
+                    }
+                }
+            });
+        }
+
+        function toggleSidebarMode() {
+            state.sidebarMode = state.sidebarMode === 'dynamic' ? 'static' : 'dynamic';
+            document.getElementById('btn-sidebar-mode').textContent = `Sidebar: ${state.sidebarMode === 'dynamic' ? 'Dynamic' : 'Pinned'}`;
+            const sidebar = document.getElementById('sidebar');
+            if (state.sidebarMode === 'static') {
+                sidebar.classList.replace('sidebar-hidden', 'sidebar-visible');
+            } else if (!editMode) {
+                sidebar.classList.replace('sidebar-visible', 'sidebar-hidden');
+            }
+            saveState();
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            if (state.theme === 'light') document.body.classList.add('theme-light');
+            else document.body.classList.remove('theme-light');
+            saveState();
+        }
+
+        // --- Clock Logic ---
+        function updateClock() {
+            const now = new Date();
+            const is12h = state.timeFormat === '12h';
+            
+            document.querySelectorAll('.live-weekday').forEach(el => el.textContent = now.toLocaleDateString('en-US', { weekday: 'long' }));
+            document.querySelectorAll('.live-day').forEach(el => el.textContent = now.getDate());
+            document.querySelectorAll('.live-month').forEach(el => el.textContent = now.toLocaleDateString('en-US', { month: 'short' }));
+            document.querySelectorAll('.live-fulldate').forEach(el => el.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }));
+            
+            document.querySelectorAll('.live-time').forEach(el => el.textContent = now.toLocaleTimeString('en-US', { hour12: is12h, hour: '2-digit', minute: '2-digit', second: '2-digit' }).split(' ')[0]);
+            document.querySelectorAll('.live-ampm').forEach(el => el.textContent = is12h ? now.toLocaleTimeString('en-US', { hour12: true }).split(' ')[1] : '');
+        }
+
+        function toggleTimeFormat() {
+            state.timeFormat = state.timeFormat === '12h' ? '24h' : '12h';
+            document.getElementById('btn-time-format').textContent = state.timeFormat;
+            saveState();
+            updateClock();
+        }
+
+        // --- Edit Mode & Dragging ---
+        function toggleEditMode() {
+            editMode = !editMode;
+            const dash = document.getElementById('dashboard');
+            const editActions = document.getElementById('edit-actions');
+            const sidebar = document.getElementById('sidebar');
+
+            if (editMode) {
+                document.body.classList.add('edit-mode');
+                dash.classList.add('edit-mode');
+                editActions.classList.remove('hidden');
+                sidebar.classList.replace('sidebar-visible', 'sidebar-hidden');
+            } else {
+                document.body.classList.remove('edit-mode');
+                dash.classList.remove('edit-mode');
+                editActions.classList.add('hidden');
+                if (state.sidebarMode === 'static') sidebar.classList.replace('sidebar-hidden', 'sidebar-visible');
+                saveState(); // Save layout on Done
+            }
+            renderToolsSection(); 
+        }
+
+        function setupWidgetDragging() {
+            const containers = document.querySelectorAll('.widget-container');
+            let activeDrag = null;
+
+            containers.forEach(container => {
+                const handle = container.querySelector('.drag-handle');
+                if (!handle) return;
+                handle.addEventListener('mousedown', (e) => {
+                    if (!editMode) return;
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    activeDrag = {
+                        el: container,
+                        offsetX: e.clientX - rect.left,
+                        offsetY: e.clientY - rect.top
+                    };
+                    container.style.zIndex = '100';
+                });
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!activeDrag) return;
+                e.preventDefault();
+                let newX = e.clientX - activeDrag.offsetX;
+                let newY = e.clientY - activeDrag.offsetY;
+                newX = Math.max(0, Math.min(newX, window.innerWidth - activeDrag.el.offsetWidth));
+                newY = Math.max(0, Math.min(newY, window.innerHeight - activeDrag.el.offsetHeight));
+
+                activeDrag.el.style.left = `${newX}px`;
+                activeDrag.el.style.top = `${newY}px`;
+                activeDrag.el.style.right = 'auto'; 
+                activeDrag.el.style.bottom = 'auto';
+                activeDrag.el.style.transform = 'none'; 
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (activeDrag) {
+                    activeDrag.el.style.zIndex = '10';
+                    activeDrag = null;
+                }
+            });
+        }
+
+        function resetLayout() {
+            document.getElementById('widget-welcomeCard').style = "left: 50%; transform: translateX(-50%); top: 40px; width: auto; height: auto;";
+            document.getElementById('widget-dateCard').style = "left: 40px; top: 40px; width: 180px; height: 180px;";
+            document.getElementById('widget-clockCard').style = "right: 40px; top: 40px; width: 320px; height: 160px;";
+            document.getElementById('widget-favoritesCard').style = "left: 40px; bottom: 40px; width: 220px; height: 260px;";
+            document.getElementById('widget-noteCard').style = "right: 40px; bottom: 40px; width: 280px; height: 200px;";
+            document.getElementById('widget-photosCard').style = "left: 40px; top: 250px; width: 220px; height: 220px;";
+            document.getElementById('widget-musicCard').style = "right: 40px; bottom: 250px; width: 320px; height: 180px;";
+            
+            document.querySelectorAll('.widget-card').forEach(card => {
+                card.style.width = '100%';
+                card.style.height = '100%';
+            });
+            saveState();
+        }
+
+        // --- Settings Modal & Toggles ---
+        function openSettingsModal(tab = 'widgets') {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            document.getElementById('sidebar').classList.replace('sidebar-visible', 'sidebar-hidden');
+            switchSettingsTab(tab);
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            if (state.sidebarMode === 'static') document.getElementById('sidebar').classList.replace('sidebar-hidden', 'sidebar-visible');
+        }
+
+        function switchSettingsTab(tabName) {
+            ['widgets', 'background', 'actions', 'theme', 'music', 'favorites'].forEach(t => {
+                const tabEl = document.getElementById(`tab-${t}`);
+                const btnEl = document.getElementById(`tab-btn-${t}`);
+                if(tabEl) tabEl.classList.add('hidden');
+                if(btnEl) {
+                    btnEl.classList.remove('glass-button-active');
+                    btnEl.classList.add('opacity-60');
+                }
+            });
+            const activeTab = document.getElementById(`tab-${tabName}`);
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            if(activeTab) activeTab.classList.remove('hidden');
+            if(activeBtn) {
+                activeBtn.classList.add('glass-button-active');
+                activeBtn.classList.remove('opacity-60');
+            }
+        }
+
+        function generateWidgetSettingsToggles() {
+            const container = document.getElementById('tab-widgets');
+            container.innerHTML = '';
+            
+            Object.keys(state.widgets).forEach(key => {
+                const isVisible = state.widgets[key].visible;
+                const html = `
+                    <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
+                        <span class="font-medium text-sm capitalize">${key.replace('Card','')}</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-${key}" class="sr-only peer" ${isVisible ? 'checked' : ''} onchange="toggleWidget('${key}', this.checked)">
+                            <div class="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        </label>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        function toggleWidget(widgetKey, forceState, doSave = true) {
+            const el = document.getElementById(`widget-${widgetKey}`);
+            const newState = forceState !== undefined ? forceState : !state.widgets[widgetKey].visible;
+            state.widgets[widgetKey].visible = newState;
+            
+            const cb = document.getElementById(`toggle-${widgetKey}`);
+            if (cb) cb.checked = newState;
+            
+            if(widgetKey === 'photosCard') document.getElementById('btn-photos-toggle').textContent = newState ? 'Hide' : 'Show';
+
+            if (el) {
+                if (newState) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            }
+            if(doSave) saveState();
+        }
+
+        // --- Favorites Functions ---
+        function renderFavorites() {
+            const grid = document.getElementById('favorites-grid');
+            grid.innerHTML = '';
+            state.favoritesList.forEach(fav => {
+                let imgHtml = '';
+                try {
+                    let domain = new URL(fav.url).hostname;
+                    imgHtml = `<img src="https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=64" class="w-6 h-6 rounded" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'white\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1\\'/></svg>'"/>`;
+                } catch(e) {
+                    imgHtml = `<i data-lucide="link" class="w-6 h-6 text-white"></i>`; 
+                }
+
+                grid.innerHTML += `
+                    <a href="${fav.url}" target="_blank" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center hover:scale-110 transition-transform shadow-sm group relative">
+                        ${imgHtml}
+                        <span class="absolute -bottom-6 opacity-0 group-hover:opacity-100 text-[10px] font-bold bg-black/80 px-2 py-1 rounded transition-opacity whitespace-nowrap text-white z-50">${fav.name}</span>
+                    </a>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function renderFavoritesSettings() {
+            const list = document.getElementById('favorites-settings-list');
+            if(!list) return;
+            list.innerHTML = '';
+            state.favoritesList.forEach(fav => {
+                let imgHtml = '';
+                try {
+                    let domain = new URL(fav.url).hostname;
+                    imgHtml = `<img src="https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=64" class="w-5 h-5 rounded" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'white\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1\\'/></svg>'"/>`;
+                } catch(e) {
+                    imgHtml = `<i data-lucide="link" class="w-5 h-5 text-white"></i>`; 
+                }
+
+                list.innerHTML += `
+                    <div class="flex items-center justify-between bg-white/5 px-4 py-3 rounded-xl border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                                ${imgHtml}
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">${fav.name}</p>
+                                <p class="text-xs opacity-50 truncate max-w-[150px]">${fav.url}</p>
+                            </div>
+                        </div>
+                        <button onclick="removeFavorite('${fav.id}')" class="p-2 glass-button rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function addFavorite() {
+            const name = document.getElementById('fav-name-input').value.trim() || 'New Fav';
+            let url = document.getElementById('fav-url-input').value.trim() || '#';
+            if (!url.startsWith('http') && url !== '#') url = 'https://' + url;
+            
+            state.favoritesList.push({ id: 'f' + Date.now(), name, url });
+            
+            document.getElementById('fav-name-input').value = '';
+            document.getElementById('fav-url-input').value = '';
+            
+            renderFavorites();
+            renderFavoritesSettings();
+            saveState();
+        }
+
+        function removeFavorite(id) {
+            state.favoritesList = state.favoritesList.filter(f => f.id !== id);
+            renderFavorites();
+            renderFavoritesSettings();
+            saveState();
+        }
+
+        // --- Music Widget & Playlists Functions ---
+        function renderPlaylistsSettings() {
+            const list = document.getElementById('playlists-settings-list');
+            if(!list) return;
+            list.innerHTML = '';
+            state.playlists.forEach(playlist => {
+                list.innerHTML += `
+                    <div class="flex items-center justify-between bg-white/5 px-4 py-3 rounded-xl border border-white/5">
+                        <div class="flex items-center gap-3 cursor-pointer group" onclick="updateMusicEmbed('${playlist.url}')">
+                            <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/40 transition-colors">
+                                <i data-lucide="play" class="w-4 h-4 text-green-400"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">${playlist.name}</p>
+                                <p class="text-xs opacity-50 truncate max-w-[150px]">${playlist.url}</p>
+                            </div>
+                        </div>
+                        <button onclick="removePlaylist('${playlist.id}')" class="p-2 glass-button rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function addPlaylist() {
+            const name = document.getElementById('playlist-name-input').value.trim() || 'My Playlist';
+            const url = document.getElementById('playlist-url-input').value.trim();
+            if(!url) return;
+
+            state.playlists.push({ id: 'p' + Date.now(), name, url });
+            
+            document.getElementById('playlist-name-input').value = '';
+            document.getElementById('playlist-url-input').value = '';
+            
+            renderPlaylistsSettings();
+            saveState();
+        }
+
+        function removePlaylist(id) {
+            state.playlists = state.playlists.filter(p => p.id !== id);
+            renderPlaylistsSettings();
+            saveState();
+        }
+
+        function updateMusicEmbed(customUrl = null) {
+            let input = typeof customUrl === 'string' ? customUrl : document.getElementById('music-link-input').value.trim();
+            if(!input) return;
+            
+            let finalUrl = input;
+            if(input.includes('<iframe') && input.includes('src=')) {
+                const match = input.match(/src=["'](.*?)["']/);
+                if(match && match[1]) finalUrl = match[1];
+            } else if(input.includes('spotify.com')) {
+                const parts = input.split('spotify.com/')[1];
+                if(parts) finalUrl = `https://open.spotify.com/embed/${parts.split('?')[0]}`;
+            }
+
+            document.getElementById('music-frame').src = finalUrl;
+            document.getElementById('music-frame').classList.remove('hidden');
+            document.getElementById('local-audio-player').classList.add('hidden');
+            state.musicEmbedUrl = finalUrl;
+            saveState();
+        }
+
+        function updateLocalAudio(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const url = URL.createObjectURL(file);
+                const audio = document.getElementById('local-audio-player');
+                audio.src = url;
+                audio.classList.remove('hidden');
+                document.getElementById('music-frame').classList.add('hidden');
+            }
+        }
+
+        // --- Photo Widget Functions ---
+        function togglePhotoPrivacy() {
+            state.photoHidden = !state.photoHidden;
+            applyPhotoPrivacy();
+            saveState();
+        }
+
+        function applyPhotoPrivacy() {
+            const img = document.getElementById('display-photo-widget');
+            const icon = document.getElementById('photo-privacy-icon');
+            if(state.photoHidden) {
+                img.classList.add('opacity-0');
+                if(icon) icon.setAttribute('data-lucide', 'eye');
+            } else {
+                img.classList.remove('opacity-0');
+                if(icon) icon.setAttribute('data-lucide', 'eye-off');
+            }
+            lucide.createIcons();
+        }
+
+        function updatePhotoWidget(e) {
+            const file = e.target.files[0];
+            if(file) {
+                compressImageForWidget(file, (base64) => {
+                    document.getElementById('display-photo-widget').src = base64;
+                    state.photoWidgetUrl = base64;
+                    saveState();
+                });
+            }
+        }
+
+        // --- Background Management & My Themes ---
+        function applyBgDOM(bgObj) {
+            const img = document.getElementById('bg-image');
+            const vid = document.getElementById('bg-video');
+            if (bgObj.type === 'video') {
+                img.classList.add('hidden'); vid.classList.remove('hidden'); vid.src = bgObj.url;
+            } else {
+                vid.classList.add('hidden'); img.classList.remove('hidden'); img.src = bgObj.url;
+            }
+        }
+
+        function triggerBgReposition(bgObj) {
+            tempBg = { ...bgObj };
+            const imgPrev = document.getElementById('bg-reposition-preview-img');
+            const vidPrev = document.getElementById('bg-reposition-preview-vid');
+            
+            if (bgObj.type === 'video') {
+                imgPrev.classList.add('hidden'); vidPrev.classList.remove('hidden'); vidPrev.src = bgObj.url;
+            } else {
+                vidPrev.classList.add('hidden'); imgPrev.classList.remove('hidden'); imgPrev.src = bgObj.url;
+            }
+            
+            imgPrev.style.objectPosition = '50% 50%';
+            vidPrev.style.objectPosition = '50% 50%';
+            const area = document.getElementById('bg-reposition-area');
+            area.currentX = 50; area.currentY = 50;
+
+            openModal('reposition-modal');
+        }
+
+        function triggerBgRepositionCurrent() {
+            triggerBgReposition(state.bg);
+        }
+
+        function resetBackground() {
+            triggerBgReposition({ url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop', type: 'image', isDb: false });
+        }
+
+        function addMyTheme(bgObj) {
+            // Prevent duplicates
+            const exists = state.myThemes.find(t => 
+                (bgObj.isDb && t.dbKey === bgObj.dbKey) || 
+                (!bgObj.isDb && t.url === bgObj.url)
+            );
+            
+            if(!exists) {
+                state.myThemes.unshift({ 
+                    id: 'mt' + Date.now(), 
+                    url: bgObj.url, 
+                    type: bgObj.type, 
+                    isDb: bgObj.isDb, 
+                    dbKey: bgObj.dbKey 
+                });
+                
+                // Keep only the most recent 4 themes to prevent DB/Storage overload
+                if (state.myThemes.length > 4) {
+                    const removed = state.myThemes.pop();
+                    if(removed.isDb) deleteFromDB(removed.dbKey);
+                }
+                
+                renderMyThemes();
+                saveState();
+            }
+        }
+
+        function renderMyThemes() {
+            const container = document.getElementById('my-themes-container');
+            container.innerHTML = '';
+            
+            if(state.myThemes.length === 0) {
+                container.innerHTML = '<p class="text-sm opacity-50 col-span-2">No custom themes saved yet.</p>';
+                return;
+            }
+            
+            state.myThemes.forEach(theme => {
+                const div = document.createElement('div');
+                div.className = 'cursor-pointer group relative';
+                div.innerHTML = `
+                    <div class="h-28 rounded-xl bg-gray-500 overflow-hidden border-2 border-transparent group-hover:border-white/50 transition-all" id="preview-${theme.id}">
+                        <!-- Placeholder -->
+                    </div>
+                    <button onclick="event.stopPropagation(); removeMyTheme('${theme.id}')" class="absolute top-2 right-2 p-1.5 bg-red-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                `;
+                div.onclick = () => triggerBgReposition(theme);
+                container.appendChild(div);
+
+                const previewContainer = document.getElementById(`preview-${theme.id}`);
+                
+                if (theme.isDb) {
+                    getFromDB(theme.dbKey, (file) => {
+                        if(file) {
+                            const url = URL.createObjectURL(file);
+                            theme.url = url; // Update session URL
+                            if(theme.type === 'video') previewContainer.innerHTML = `<video src="${url}" class="w-full h-full object-cover"></video>`;
+                            else previewContainer.innerHTML = `<img src="${url}" class="w-full h-full object-cover"/>`;
+                        } else {
+                            previewContainer.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs opacity-50">File Lost</div>`;
+                        }
+                    });
+                } else {
+                    if(theme.type === 'video') previewContainer.innerHTML = `<video src="${theme.url}" class="w-full h-full object-cover"></video>`;
+                    else previewContainer.innerHTML = `<img src="${theme.url}" class="w-full h-full object-cover"/>`;
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function removeMyTheme(id) {
+            const theme = state.myThemes.find(t => t.id === id);
+            if(theme && theme.isDb) deleteFromDB(theme.dbKey);
+            
+            state.myThemes = state.myThemes.filter(t => t.id !== id);
+            renderMyThemes();
+            saveState();
+        }
+
+        function applyQuickBgUrl() {
+            const url = document.getElementById('quick-url-input').value.trim();
+            if(url) {
+                const type = url.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+                triggerBgReposition({ url, type, isDb: false });
+            }
+        }
+
+        function handleBgUpload(e, type) {
+            const file = e.target.files[0];
+            if (file) {
+                const dbKey = 'bg_' + Date.now();
+                saveToDB(dbKey, file, () => {
+                    const blobUrl = URL.createObjectURL(file);
+                    triggerBgReposition({ url: blobUrl, type: file.type.startsWith('video') ? 'video' : 'image', isDb: true, dbKey: dbKey });
+                });
+            }
+        }
+
+        // --- Modals ---
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('hidden'); modal.style.display = 'flex';
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.add('hidden'); modal.style.display = ''; }, 300);
+        }
+
+        // --- Background Reposition Logic ---
+        function setupBackgroundRepositioner() {
+            const area = document.getElementById('bg-reposition-area');
+            const previewImg = document.getElementById('bg-reposition-preview-img');
+            const previewVid = document.getElementById('bg-reposition-preview-vid');
+            let isDragging = false, startX, startY;
+
+            area.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX; startY = e.clientY; });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                let newX = area.currentX - ((e.clientX - startX) / area.offsetWidth * 100);
+                let newY = area.currentY - ((e.clientY - startY) / area.offsetHeight * 100);
+                newX = Math.max(0, Math.min(newX, 100)); newY = Math.max(0, Math.min(newY, 100));
+                
+                previewImg.style.objectPosition = `${newX}% ${newY}%`;
+                previewVid.style.objectPosition = `${newX}% ${newY}%`;
+                
+                startX = e.clientX; startY = e.clientY; 
+                area.currentX = newX; area.currentY = newY;
+            });
+            window.addEventListener('mouseup', () => isDragging = false);
+        }
+        function centerBgReposition() {
+            const area = document.getElementById('bg-reposition-area');
+            area.currentX = 50; area.currentY = 50;
+            document.getElementById('bg-reposition-preview-img').style.objectPosition = '50% 50%';
+            document.getElementById('bg-reposition-preview-vid').style.objectPosition = '50% 50%';
+        }
+        function applyBgPositionAndSave() {
+            const area = document.getElementById('bg-reposition-area');
+            state.bgPos = { x: area.currentX, y: area.currentY };
+            state.bg = tempBg;
+            
+            applyBgDOM(state.bg);
+            document.getElementById('bg-image').style.objectPosition = `${state.bgPos.x}% ${state.bgPos.y}%`;
+            document.getElementById('bg-video').style.objectPosition = `${state.bgPos.x}% ${state.bgPos.y}%`;
+            
+            addMyTheme(state.bg);
+            saveState();
+            closeModal('reposition-modal');
+        }
+
+        // --- Shortcut Navigation Tools ---
+        function renderToolsSection() {
+            const container = document.getElementById('tools-container');
+            container.innerHTML = '';
+            
+            state.toolsList.forEach(tool => {
+                let imgHtml = '';
+                if(tool.iconType === 'auto') {
+                    try {
+                        let domain = new URL(tool.url).hostname;
+                        imgHtml = `<img src="https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=64" class="w-8 h-8 rounded" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'white\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1\\'/></svg>'"/>`;
+                    } catch(e) {
+                        imgHtml = `<i data-lucide="link" class="w-8 h-8 text-white"></i>`; 
+                    }
+                } else {
+                    imgHtml = `<img src="${tool.localIconUrl}" class="w-10 h-10 rounded object-cover" />`;
+                }
+
+                container.innerHTML += `
+                    <div class="relative group">
+                        <a href="${tool.url}" target="_blank" class="glass-panel flex flex-col items-center justify-center text-center p-8 rounded-[2rem] hover:bg-white/10 transition-all hover:-translate-y-1 h-full w-full no-underline">
+                            <div class="p-4 rounded-2xl mb-3 bg-white/10 group-hover:bg-white/20 transition-colors flex items-center justify-center">
+                                ${imgHtml}
+                            </div>
+                            <h3 class="text-sm font-semibold truncate w-full px-2">${tool.title}</h3>
+                        </a>
+                        ${editMode ? `
+                            <div class="absolute -top-3 -right-3 flex gap-1 z-50">
+                                <button onclick="openShortcutModal('${tool.id}')" class="p-2 bg-blue-500 rounded-lg text-white shadow hover:bg-blue-600"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                <button onclick="deleteShortcut('${tool.id}')" class="p-2 bg-red-500 rounded-lg text-white shadow hover:bg-red-600"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            // Add (+) button
+            container.innerHTML += `
+                <div onclick="openShortcutModal()" class="glass-panel flex flex-col items-center justify-center text-center p-8 rounded-[2rem] hover:bg-white/10 transition-all hover:-translate-y-1 cursor-pointer border-dashed border-2 border-white/20 bg-transparent shadow-none group h-full min-h-[160px]">
+                    <div class="p-4 rounded-full bg-white/5 group-hover:bg-white/20 transition-colors mb-3">
+                        <i data-lucide="plus" class="w-8 h-8 opacity-70 group-hover:opacity-100"></i>
+                    </div>
+                    <h3 class="text-sm font-medium opacity-60">Add Shortcut</h3>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // --- Shortcut Modal Form ---
+        function openShortcutModal(id = null) {
+            document.getElementById('shortcut-modal-title').textContent = id ? 'Edit Shortcut' : 'Add Shortcut';
+            document.getElementById('shortcut-id').value = id || '';
+            
+            const tool = id ? state.toolsList.find(t => t.id === id) : null;
+            document.getElementById('shortcut-name').value = tool ? tool.title : '';
+            document.getElementById('shortcut-url').value = tool ? tool.url : '';
+            
+            if(tool && tool.iconType === 'local') {
+                document.querySelector('input[name="icon-type"][value="local"]').checked = true;
+                document.getElementById('shortcut-icon-preview').src = tool.localIconUrl;
+                document.getElementById('shortcut-icon-preview').classList.remove('hidden');
+            } else {
+                document.querySelector('input[name="icon-type"][value="auto"]').checked = true;
+                document.getElementById('shortcut-icon-preview').classList.add('hidden');
+            }
+            toggleIconSourceUI();
+            openModal('shortcut-modal');
+        }
+
+        function toggleIconSourceUI() {
+            const isLocal = document.querySelector('input[name="icon-type"]:checked').value === 'local';
+            document.getElementById('local-icon-upload').style.display = isLocal ? 'block' : 'none';
+        }
+
+        function previewShortcutIcon(e) {
+            const file = e.target.files[0];
+            if(file) {
+                compressImageForWidget(file, (base64) => {
+                    const img = document.getElementById('shortcut-icon-preview');
+                    img.src = base64;
+                    img.classList.remove('hidden');
+                });
+            }
+        }
+
+        function saveShortcut() {
+            const id = document.getElementById('shortcut-id').value;
+            const title = document.getElementById('shortcut-name').value || 'New Link';
+            let url = document.getElementById('shortcut-url').value || '#';
+            if (!url.startsWith('http') && !url.startsWith('file') && url !== '#') url = 'https://' + url;
+            
+            const iconType = document.querySelector('input[name="icon-type"]:checked').value;
+            const localIconUrl = document.getElementById('shortcut-icon-preview').src;
+
+            const toolData = { id: id || `t${Date.now()}`, title, url, iconType, localIconUrl };
+
+            if(id) {
+                const index = state.toolsList.findIndex(t => t.id === id);
+                if(index > -1) state.toolsList[index] = toolData;
+            } else {
+                state.toolsList.push(toolData);
+            }
+            
+            renderToolsSection();
+            saveState();
+            closeModal('shortcut-modal');
+        }
+
+        function deleteShortcut(id) {
+            state.toolsList = state.toolsList.filter(t => t.id !== id);
+            renderToolsSection();
+            saveState();
+        }
+
+    </script>
+</body>
+</html>
