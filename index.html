@@ -104,6 +104,26 @@
             min-width: 150px;
             min-height: 150px;
         }
+
+        /* Visual cue for the resize handle */
+        .edit-mode .widget-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.4) 50%);
+            pointer-events: none;
+            border-bottom-right-radius: 1.8rem;
+        }
+
+        /* Prevent media/iframes from stealing cursor events during resize and drag */
+        .edit-mode iframe, 
+        .edit-mode audio, 
+        .edit-mode img {
+            pointer-events: none !important;
+        }
         
         .drag-handle-overlay, .edit-content-overlay { display: none; }
         .edit-mode .drag-handle-overlay { display: flex; }
@@ -159,8 +179,8 @@
     <section id="dashboard" class="relative h-screen w-full snap-start overflow-hidden">
         
         <!-- Welcome Text Widget -->
-        <div id="widget-welcomeCard" class="widget-container z-10" style="left: 50%; transform: translateX(-50%); top: 40px; width: auto; height: auto;">
-            <div class="widget-card relative glass-panel rounded-3xl px-12 py-6 w-full h-full flex flex-col items-center justify-center transition-all duration-300">
+        <div id="widget-welcomeCard" class="widget-container z-10" style="left: 50%; transform: translateX(-50%); top: 40px;">
+            <div class="widget-card relative glass-panel rounded-3xl px-12 py-6 flex flex-col items-center justify-center transition-colors duration-300" style="width: auto; height: auto;">
                 <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
                     <button class="p-2 bg-black/60 backdrop-blur-md rounded-lg drag-handle hover:bg-white/20 shadow"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
                 </div>
@@ -172,8 +192,8 @@
         </div>
 
         <!-- Date Widget -->
-        <div id="widget-dateCard" class="widget-container z-10" style="left: 40px; top: 40px; width: 180px; height: 180px;">
-            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col justify-center items-start transition-all duration-300">
+        <div id="widget-dateCard" class="widget-container z-10" style="left: 40px; top: 40px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 flex flex-col justify-center items-start transition-colors duration-300" style="width: 180px; height: 180px;">
                 <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
                     <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
                 </div>
@@ -184,8 +204,8 @@
         </div>
 
         <!-- Clock Widget -->
-        <div id="widget-clockCard" class="widget-container z-10" style="right: 40px; top: 40px; width: 320px; height: 160px;">
-            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col justify-center transition-all duration-300">
+        <div id="widget-clockCard" class="widget-container z-10" style="right: 40px; top: 40px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 flex flex-col justify-center transition-colors duration-300" style="width: 320px; height: 160px;">
                 <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
                     <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
                 </div>
@@ -198,8 +218,8 @@
         </div>
 
         <!-- Photos Widget -->
-        <div id="widget-photosCard" class="widget-container z-10 hidden" style="left: 40px; top: 250px; width: 220px; height: 220px;">
-            <div class="widget-card relative glass-panel rounded-[2rem] p-3 w-full h-full flex flex-col transition-all duration-300 group">
+        <div id="widget-photosCard" class="widget-container z-10 hidden" style="left: 40px; top: 250px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-3 flex flex-col transition-colors duration-300 group" style="width: 220px; height: 220px;">
                 <button onclick="togglePhotoPrivacy()" class="absolute top-4 left-4 z-30 p-1.5 bg-black/50 backdrop-blur-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-white hover:bg-white/20 shadow">
                     <i id="photo-privacy-icon" data-lucide="eye-off" class="w-4 h-4"></i>
                 </button>
@@ -208,8 +228,8 @@
                 </div>
                 <img id="display-photo-widget" src="https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=400" class="w-full h-full object-cover rounded-[1.5rem] pointer-events-none transition-opacity duration-300" />
                 <div class="edit-content-overlay absolute inset-0 bg-black/60 rounded-[2rem] items-center justify-center flex-col gap-2 z-40 pointer-events-auto">
-                    <label class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold cursor-pointer text-white backdrop-blur-md transition-all">
-                        Upload Photo
+                    <label class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold cursor-pointer text-white backdrop-blur-md transition-colors">
+                        Upload HD Photo
                         <input type="file" accept="image/*" class="hidden" onchange="updatePhotoWidget(event)">
                     </label>
                 </div>
@@ -217,21 +237,21 @@
         </div>
 
         <!-- Music Widget (Spotify / Local) -->
-        <div id="widget-musicCard" class="widget-container z-10 hidden" style="right: 40px; bottom: 250px; width: 320px; height: 180px;">
-            <div class="widget-card relative glass-panel rounded-[2rem] p-4 w-full h-full flex flex-col transition-all duration-300 overflow-hidden group">
+        <div id="widget-musicCard" class="widget-container z-10 hidden" style="right: 40px; bottom: 250px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-4 flex flex-col transition-colors duration-300 overflow-hidden group" style="width: 320px; height: 180px;">
                 <div class="drag-handle-overlay absolute top-2 right-2 gap-2 z-50">
                     <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
                 </div>
                 <div id="music-player-container" class="w-full h-full flex flex-col justify-center">
-                    <iframe id="music-frame" src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" class="rounded-xl"></iframe>
+                    <iframe id="music-frame" src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M" width="100%" height="100%" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" class="rounded-xl"></iframe>
                     <audio id="local-audio-player" controls class="w-full hidden mt-2 rounded-lg"></audio>
                 </div>
                 <div class="edit-content-overlay absolute inset-0 bg-black/80 rounded-[2rem] flex-col justify-center px-6 gap-3 z-40 pointer-events-auto">
                     <p class="text-xs font-bold text-white mb-1">Set Audio Source</p>
                     <input type="text" id="music-link-input" placeholder="Paste Embed Code or Playlist Link" class="w-full bg-white/10 text-white rounded-lg px-3 py-2 text-sm border border-white/20" />
                     <div class="flex gap-2">
-                        <button onclick="updateMusicEmbed()" class="flex-1 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-xs font-bold text-white">Set Media</button>
-                        <label class="flex-1 bg-white/20 hover:bg-white/30 py-2 text-center rounded-lg text-xs font-bold cursor-pointer text-white">
+                        <button onclick="updateMusicEmbed()" class="flex-1 bg-white/20 hover:bg-white/30 py-2 rounded-lg text-xs font-bold text-white transition-colors">Set Media</button>
+                        <label class="flex-1 bg-white/20 hover:bg-white/30 py-2 text-center rounded-lg text-xs font-bold cursor-pointer text-white transition-colors">
                             Upload Local
                             <input type="file" accept="audio/*" class="hidden" onchange="updateLocalAudio(event)">
                         </label>
@@ -241,13 +261,12 @@
         </div>
 
         <!-- Favorites Widget -->
-        <div id="widget-favoritesCard" class="widget-container z-10" style="left: 40px; bottom: 40px; width: 220px; height: 260px;">
-            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col transition-all duration-300">
+        <div id="widget-favoritesCard" class="widget-container z-10" style="left: 40px; bottom: 40px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 flex flex-col transition-colors duration-300" style="width: 220px; height: 260px;">
                 <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
                     <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
                 </div>
                 <span class="text-sm font-bold mb-4 block opacity-90">Favorites</span>
-                <!-- Hidden Horizontal scrollbar via custom CSS class -->
                 <div id="favorites-grid" class="grid grid-cols-3 gap-4 flex-1 content-start overflow-y-auto overflow-x-hidden no-scrollbar pr-1 pb-2">
                     <!-- Injected via JS -->
                 </div>
@@ -255,8 +274,8 @@
         </div>
 
         <!-- Note Widget -->
-        <div id="widget-noteCard" class="widget-container z-10 hidden" style="right: 40px; bottom: 40px; width: 280px; height: 200px;">
-            <div class="widget-card relative glass-panel rounded-[2rem] p-6 w-full h-full flex flex-col transition-all duration-300">
+        <div id="widget-noteCard" class="widget-container z-10 hidden" style="right: 40px; bottom: 40px;">
+            <div class="widget-card relative glass-panel rounded-[2rem] p-6 flex flex-col transition-colors duration-300" style="width: 280px; height: 200px;">
                 <div class="drag-handle-overlay absolute top-3 right-3 gap-2 z-50">
                     <button class="p-1.5 bg-black/50 backdrop-blur-md rounded-lg drag-handle"><i data-lucide="grip-horizontal" class="w-4 h-4 text-white"></i></button>
                 </div>
@@ -567,6 +586,7 @@
             noteContent: '',
             musicEmbedUrl: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
             photoWidgetUrl: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=400',
+            photoWidget: { isDb: false, dbKey: '' }, // For HD local photo storage
             photoHidden: false,
             widgets: {
                 welcomeCard: { visible: true, layout: {} },
@@ -606,14 +626,15 @@
             document.querySelectorAll('.widget-container').forEach(container => {
                 const key = container.id.replace('widget-', '');
                 if (state.widgets[key]) {
+                    const card = container.querySelector('.widget-card');
                     state.widgets[key].layout = {
                         left: container.style.left,
                         top: container.style.top,
                         right: container.style.right,
                         bottom: container.style.bottom,
                         transform: container.style.transform,
-                        width: container.querySelector('.widget-card').style.width,
-                        height: container.querySelector('.widget-card').style.height
+                        width: card.style.width,
+                        height: card.style.height
                     };
                 }
             });
@@ -662,7 +683,7 @@
                             state.bg.url = URL.createObjectURL(file);
                             applyBgDOM(state.bg);
                         } else {
-                            applyBgDOM(DEFAULT_STATE.bg); // fallback if lost from DB
+                            applyBgDOM(DEFAULT_STATE.bg); 
                         }
                     });
                 } else {
@@ -683,9 +704,9 @@
                     container.style.bottom = wState.layout.bottom;
                     container.style.transform = wState.layout.transform;
                     const card = container.querySelector('.widget-card');
-                    if (card) {
-                        card.style.width = wState.layout.width || '100%';
-                        card.style.height = wState.layout.height || '100%';
+                    if (card && wState.layout.width) {
+                        card.style.width = wState.layout.width;
+                        card.style.height = wState.layout.height;
                     }
                 }
             });
@@ -696,7 +717,17 @@
                 document.getElementById('music-frame').src = state.musicEmbedUrl;
                 document.getElementById('music-link-input').value = state.musicEmbedUrl;
             }
-            if (state.photoWidgetUrl) {
+            
+            // High Quality HD Photo Widget Restore
+            if (state.photoWidget && state.photoWidget.isDb) {
+                getFromDB(state.photoWidget.dbKey, (file) => {
+                    if (file) {
+                        document.getElementById('display-photo-widget').src = URL.createObjectURL(file);
+                    } else if (state.photoWidgetUrl) {
+                        document.getElementById('display-photo-widget').src = state.photoWidgetUrl;
+                    }
+                });
+            } else if (state.photoWidgetUrl) {
                 document.getElementById('display-photo-widget').src = state.photoWidgetUrl;
             }
             applyPhotoPrivacy();
@@ -844,18 +875,22 @@
         }
 
         function resetLayout() {
-            document.getElementById('widget-welcomeCard').style = "left: 50%; transform: translateX(-50%); top: 40px; width: auto; height: auto;";
-            document.getElementById('widget-dateCard').style = "left: 40px; top: 40px; width: 180px; height: 180px;";
-            document.getElementById('widget-clockCard').style = "right: 40px; top: 40px; width: 320px; height: 160px;";
-            document.getElementById('widget-favoritesCard').style = "left: 40px; bottom: 40px; width: 220px; height: 260px;";
-            document.getElementById('widget-noteCard').style = "right: 40px; bottom: 40px; width: 280px; height: 200px;";
-            document.getElementById('widget-photosCard').style = "left: 40px; top: 250px; width: 220px; height: 220px;";
-            document.getElementById('widget-musicCard').style = "right: 40px; bottom: 250px; width: 320px; height: 180px;";
+            document.getElementById('widget-welcomeCard').style = "left: 50%; transform: translateX(-50%); top: 40px;";
+            document.getElementById('widget-dateCard').style = "left: 40px; top: 40px;";
+            document.getElementById('widget-clockCard').style = "right: 40px; top: 40px;";
+            document.getElementById('widget-favoritesCard').style = "left: 40px; bottom: 40px;";
+            document.getElementById('widget-noteCard').style = "right: 40px; bottom: 40px;";
+            document.getElementById('widget-photosCard').style = "left: 40px; top: 250px;";
+            document.getElementById('widget-musicCard').style = "right: 40px; bottom: 250px;";
             
-            document.querySelectorAll('.widget-card').forEach(card => {
-                card.style.width = '100%';
-                card.style.height = '100%';
-            });
+            document.getElementById('widget-welcomeCard').querySelector('.widget-card').style = "width: auto; height: auto;";
+            document.getElementById('widget-dateCard').querySelector('.widget-card').style = "width: 180px; height: 180px;";
+            document.getElementById('widget-clockCard').querySelector('.widget-card').style = "width: 320px; height: 160px;";
+            document.getElementById('widget-favoritesCard').querySelector('.widget-card').style = "width: 220px; height: 260px;";
+            document.getElementById('widget-noteCard').querySelector('.widget-card').style = "width: 280px; height: 200px;";
+            document.getElementById('widget-photosCard').querySelector('.widget-card').style = "width: 220px; height: 220px;";
+            document.getElementById('widget-musicCard').querySelector('.widget-card').style = "width: 320px; height: 180px;";
+            
             saveState();
         }
 
@@ -1104,9 +1139,16 @@
         function updatePhotoWidget(e) {
             const file = e.target.files[0];
             if(file) {
-                compressImageForWidget(file, (base64) => {
-                    document.getElementById('display-photo-widget').src = base64;
-                    state.photoWidgetUrl = base64;
+                const dbKey = 'photo_' + Date.now();
+                // Save original high-quality file to IndexedDB instead of compressing to local storage string
+                saveToDB(dbKey, file, () => {
+                    const blobUrl = URL.createObjectURL(file);
+                    document.getElementById('display-photo-widget').src = blobUrl;
+                    
+                    if(state.photoWidget && state.photoWidget.isDb) {
+                        deleteFromDB(state.photoWidget.dbKey);
+                    }
+                    state.photoWidget = { isDb: true, dbKey: dbKey };
                     saveState();
                 });
             }
