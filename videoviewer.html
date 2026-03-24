@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyFlix - Local Video Player</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Custom Range Slider Styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 12px;
+      width: 12px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+      margin-top: -4px;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+
+    /* Custom Animations */
+    @keyframes pulse-action {
+      0% { transform: scale(0.8); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+    .animate-action {
+      animation: pulse-action 0.5s ease-out forwards;
+    }
+    
+    /* Hide cursor when controls are hidden */
+    .cursor-none-when-playing {
+      cursor: none;
+    }
+  </style>
+</head>
+<body class="bg-[#141414] text-white font-sans selection:bg-red-600 selection:text-white min-h-screen">
+
+  <!-- ================= BROWSE SCREEN ================= -->
+  <div id="browse-screen" class="min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="flex items-center px-8 py-6 bg-gradient-to-b from-black/80 to-transparent sticky top-0 z-50">
+      <h1 class="text-red-600 text-3xl font-black tracking-tighter cursor-pointer">MYFLIX</h1>
+      <div class="ml-8 hidden md:flex space-x-5 text-sm font-medium text-gray-300">
+        <span class="text-white font-bold cursor-pointer">Home</span>
+        <span class="hover:text-white transition-colors cursor-pointer">Local Files</span>
+        <span class="hover:text-white transition-colors cursor-pointer">History</span>
+      </div>
+    </nav>
+
+    <!-- Hero / Dropzone -->
+    <div class="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
+      <div id="dropzone" class="w-full max-w-4xl rounded-2xl border-2 border-dashed border-gray-700 bg-black/40 transition-all duration-300 flex flex-col items-center justify-center p-16 text-center shadow-2xl hover:border-gray-500 hover:bg-black/60">
+        <div class="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-black/50">
+          <i data-lucide="upload" id="upload-icon" class="w-10 h-10 text-gray-400 transition-colors"></i>
+        </div>
+        <h2 class="text-4xl font-bold mb-4">Watch Local Videos</h2>
+        <p class="text-gray-400 text-lg mb-8 max-w-md">
+          Drag and drop your video file here, or click to browse. We support MKV, MP4, WebM, and more.
+        </p>
+        
+        <input type="file" id="file-input" accept="video/*" class="hidden" />
+        
+        <button id="select-file-btn" class="bg-white text-black px-8 py-3 rounded-md font-bold text-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+          <i data-lucide="play" class="w-5 h-5 fill-black text-black"></i>
+          Select File
+        </button>
+      </div>
+
+      <!-- Web URL Input -->
+      <div class="mt-8 w-full max-w-2xl flex gap-2">
+        <input type="url" id="url-input" placeholder="Or paste a web video URL (https://...)" class="flex-1 bg-black/40 border border-gray-700 rounded-md px-4 py-3 text-white focus:outline-none focus:border-red-500 shadow-lg placeholder-gray-500 transition-colors hover:bg-black/60" />
+        <button id="play-url-btn" class="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-md font-bold transition-colors flex items-center gap-2 shadow-lg">
+          Play URL
+        </button>
+      </div>
+
+      <!-- History Section -->
+      <div id="history-section" class="w-full max-w-5xl mt-16 px-4 hidden">
+        <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+          <i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>
+          Recent History
+        </h3>
+        <p class="text-sm text-gray-500 mb-4">
+          * URLs resume automatically. Local files will request a quick permission check to resume without re-selecting.
+        </p>
+        <div id="history-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PLAYER SCREEN ================= -->
+  <div id="player-screen" class="relative w-full h-screen bg-black overflow-hidden select-none hidden">
+    <!-- Video Element -->
+    <video id="video-player" class="w-full h-full object-contain" crossorigin="anonymous"></video>
+
+    <!-- Buffering Indicator -->
+    <div id="buffering-indicator" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden">
+      <div class="w-16 h-16 border-4 border-gray-600 border-t-red-600 rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Center Action Animation -->
+    <div id="center-action-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20 hidden">
+      <div class="bg-black/50 p-6 rounded-full animate-action backdrop-blur-sm">
+        <i data-lucide="play" id="center-action-icon" class="w-16 h-16 text-white fill-white hidden"></i>
+      </div>
+    </div>
+
+    <!-- Controls Overlay -->
+    <div id="controls-overlay" class="absolute inset-0 flex flex-col justify-between transition-opacity duration-500 bg-gradient-to-b from-black/60 via-transparent to-black/80 opacity-100">
+      
+      <!-- Top Bar -->
+      <div class="p-6 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button id="close-player-btn" class="p-2 hover:bg-white/20 rounded-full transition-colors pointer-events-auto">
+            <i data-lucide="arrow-left" class="w-6 h-6"></i>
+          </button>
+          <h2 id="video-title" class="text-xl font-medium drop-shadow-md truncate max-w-xl">Movie Title</h2>
+        </div>
+      </div>
+
+      <!-- Bottom Bar Container -->
+      <div class="px-6 pb-6 pt-12 pointer-events-auto">
+        
+        <!-- Progress Bar Container -->
+        <div class="relative group w-full h-8 flex items-center cursor-pointer mb-2">
+          <input type="range" id="seek-bar" min="0" max="100" value="0" class="absolute w-full h-full opacity-0 cursor-pointer z-10" />
+          <!-- Visual Progress Track -->
+          <div class="w-full h-1.5 bg-gray-600/50 rounded-full overflow-hidden group-hover:h-2.5 transition-all duration-200">
+            <div id="progress-fill" class="h-full bg-red-600 relative" style="width: 0%">
+              <!-- Thumb pseudo-element -->
+              <div class="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-red-600 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-[0_0_10px_rgba(229,9,20,0.8)]"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="flex items-center justify-between">
+          
+          <!-- Left Controls -->
+          <div class="flex items-center gap-4 lg:gap-6">
+            <button id="play-pause-btn" class="hover:scale-110 transition-transform">
+              <i data-lucide="play" id="play-icon" class="w-8 h-8 fill-white"></i>
+              <i data-lucide="pause" id="pause-icon" class="w-8 h-8 fill-white hidden"></i>
+            </button>
+            
+            <button id="skip-back-btn" class="hover:text-gray-300 transition-colors hidden sm:block">
+              <i data-lucide="skip-back" class="w-6 h-6"></i>
+            </button>
+            
+            <button id="skip-forward-btn" class="hover:text-gray-300 transition-colors hidden sm:block">
+              <i data-lucide="skip-forward" class="w-6 h-6"></i>
+            </button>
+
+            <div class="flex items-center gap-2 group relative">
+              <button id="mute-btn" class="hover:text-gray-300 transition-colors">
+                <i data-lucide="volume-2" id="vol-icon" class="w-6 h-6"></i>
+                <i data-lucide="volume-x" id="muted-icon" class="w-6 h-6 hidden"></i>
+              </button>
+              <div class="w-0 overflow-hidden group-hover:w-24 transition-all duration-300 ease-out flex items-center">
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" class="w-full h-1.5 accent-white cursor-pointer bg-gray-600 rounded-lg" />
+              </div>
+            </div>
+
+            <div class="text-sm font-medium tracking-wide">
+              <span id="current-time">00:00</span> <span class="text-gray-400">/</span> <span id="total-time">00:00</span>
+            </div>
+          </div>
+
+          <!-- Right Controls -->
+          <div class="flex items-center gap-4 lg:gap-6">
+            
+            <!-- Playback Speed -->
+            <div class="relative">
+              <button id="speed-btn" class="flex items-center gap-1 hover:text-gray-300 transition-colors text-sm font-bold">
+                <span id="speed-label">1x</span> <i data-lucide="chevron-down" class="w-4 h-4"></i>
+              </button>
+              
+              <div id="speed-menu" class="absolute bottom-full right-0 mb-4 bg-black/90 border border-gray-800 rounded-lg py-2 w-32 backdrop-blur-md hidden">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Subtitles -->
+            <div class="flex items-center gap-2 relative">
+              <input type="file" id="subtitle-input" accept=".srt,.vtt" class="hidden" />
+              <button id="subtitle-btn" class="hover:text-gray-300 transition-colors relative text-gray-400" title="Load Subtitles (.srt/.vtt)">
+                <i data-lucide="subtitles" class="w-6 h-6"></i>
+                <div id="subtitle-indicator" class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-red-600 rounded-full hidden"></div>
+              </button>
+            </div>
+
+            <!-- Picture in Picture -->
+            <button id="pip-btn" class="hover:text-gray-300 transition-colors hidden md:block" title="Picture-in-Picture">
+              <i data-lucide="monitor-play" class="w-6 h-6"></i>
+            </button>
+
+            <!-- Fullscreen -->
+            <button id="fullscreen-btn" class="hover:text-gray-300 transition-colors">
+              <i data-lucide="maximize" id="maximize-icon" class="w-6 h-6"></i>
+              <i data-lucide="minimize" id="minimize-icon" class="w-6 h-6 hidden"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // --- State & DOM Elements ---
+    let currentFile = null;
+    let currentVideoData = null;
+    let subtitleUrl = null;
+    let subtitlesEnabled = false;
+    let controlsTimeout = null;
+    let centerIconTimeout = null;
+
+    // Screens
+    const browseScreen = document.getElementById('browse-screen');
+    const playerScreen = document.getElementById('player-screen');
+    
+    // Browse Elements
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const selectFileBtn = document.getElementById('select-file-btn');
+    const uploadIcon = document.getElementById('upload-icon');
+    const urlInput = document.getElementById('url-input');
+    const playUrlBtn = document.getElementById('play-url-btn');
+    const historySection = document.getElementById('history-section');
+    const historyGrid = document.getElementById('history-grid');
+
+    // Player Elements
+    const video = document.getElementById('video-player');
+    const controlsOverlay = document.getElementById('controls-overlay');
+    const closePlayerBtn = document.getElementById('close-player-btn');
+    const videoTitle = document.getElementById('video-title');
+    const bufferingIndicator = document.getElementById('buffering-indicator');
+    
+    // Controls Elements
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+    const seekBar = document.getElementById('seek-bar');
+    const progressFill = document.getElementById('progress-fill');
+    const currentTimeEl = document.getElementById('current-time');
+    const totalTimeEl = document.getElementById('total-time');
+    const muteBtn = document.getElementById('mute-btn');
+    const volIcon = document.getElementById('vol-icon');
+    const mutedIcon = document.getElementById('muted-icon');
+    const volumeSlider = document.getElementById('volume-slider');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const maximizeIcon = document.getElementById('maximize-icon');
+    const minimizeIcon = document.getElementById('minimize-icon');
+    const skipBackBtn = document.getElementById('skip-back-btn');
+    const skipForwardBtn = document.getElementById('skip-forward-btn');
+    const pipBtn = document.getElementById('pip-btn');
+    
+    const speedBtn = document.getElementById('speed-btn');
+    const speedLabel = document.getElementById('speed-label');
+    const speedMenu = document.getElementById('speed-menu');
+    
+    const subtitleBtn = document.getElementById('subtitle-btn');
+    const subtitleInput = document.getElementById('subtitle-input');
+    const subtitleIndicator = document.getElementById('subtitle-indicator');
+    
+    const centerActionOverlay = document.getElementById('center-action-overlay');
+    const centerActionIcon = document.getElementById('center-action-icon');
+
+    // --- Helpers ---
+    const formatTime = (timeInSeconds) => {
+      if (isNaN(timeInSeconds)) return "00:00";
+      const hours = Math.floor(timeInSeconds / 3600);
+      const minutes = Math.floor((timeInSeconds % 3600) / 60);
+      const seconds = Math.floor(timeInSeconds % 60);
+      
+      if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const srtToVtt = (srtContent) => {
+      let vtt = "WEBVTT\n\n";
+      vtt += srtContent
+        .replace(/\{\\([ib])\}/g, "<$1>")
+        .replace(/\{\\\/([ib])\}/g, "</$1>")
+        .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+      return vtt;
+    };
+
+    // --- IndexedDB & File System Access API ---
+    const dbName = 'MyFlixDB';
+    const storeName = 'fileHandles';
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1);
+        request.onupgradeneeded = (e) => {
+          e.target.result.createObjectStore(storeName);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function storeHandle(id, handle) {
+      const db = await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).put(handle, id);
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+      });
+    }
+
+    async function getHandle(id) {
+      const db = await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const request = tx.objectStore(storeName).get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = reject;
+      });
+    }
+
+    async function verifyPermission(fileHandle) {
+      const options = { mode: 'read' };
+      if ((await fileHandle.queryPermission(options)) === 'granted') return true;
+      if ((await fileHandle.requestPermission(options)) === 'granted') return true;
+      return false;
+    }
+
+    // --- Browse & History Logic ---
+    const loadHistory = () => {
+      const history = JSON.parse(localStorage.getItem('myflix_history') || '[]');
+      if (history.length > 0) {
+        historySection.classList.remove('hidden');
+        historyGrid.innerHTML = history.map((video, idx) => `
+          <div class="bg-gray-900 rounded-lg overflow-hidden group cursor-pointer hover:scale-105 transition-transform duration-300 relative border border-gray-800" onclick="playHistoryItem('${video.id}', '${video.type}')" title="${video.type === 'local' ? 'Select file to resume' : 'Click to resume URL'}">
+            <div class="h-32 bg-gray-800 flex items-center justify-center relative">
+              <i data-lucide="${video.type === 'url' ? 'globe' : 'file-video'}" class="w-12 h-12 text-gray-600 group-hover:text-red-500 transition-colors"></i>
+              <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div class="bg-white/20 p-3 rounded-full backdrop-blur-sm">
+                  <i data-lucide="play" class="w-6 h-6 text-white fill-white"></i>
+                </div>
+              </div>
+            </div>
+            <div class="h-1 w-full bg-gray-700">
+              <div class="h-full bg-red-600" style="width: ${(video.progress / video.duration) * 100}%"></div>
+            </div>
+            <div class="p-3">
+              <p class="font-semibold text-sm truncate" title="${video.name}">${video.name}</p>
+              <p class="text-xs text-gray-400 mt-1">${formatTime(video.progress)} / ${formatTime(video.duration)}</p>
+            </div>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      } else {
+        historySection.classList.add('hidden');
+      }
+    };
+
+    window.playHistoryItem = async (id, type) => {
+      if (type === 'url') {
+        handleUrlSelect(id);
+      } else {
+        if ('showOpenFilePicker' in window) {
+          try {
+            const handle = await getHandle(id);
+            if (handle) {
+              const hasPermission = await verifyPermission(handle);
+              if (hasPermission) {
+                const file = await handle.getFile();
+                handleVideoSelect(file, id);
+                return;
+              } else {
+                return; // User denied permission
+              }
+            }
+          } catch(e) {
+            console.error("Handle not found or invalid. File may have been moved.", e);
+          }
+        }
+        
+        // Fallback for older browsers or if file handle is lost/moved
+        alert(`Could not automatically load the file.\n\nPlease select it manually.`);
+        fileInput.click();
+      }
+    };
+
+    const setupVideoPlayback = (id) => {
+      const history = JSON.parse(localStorage.getItem('myflix_history') || '[]');
+      const savedState = history.find(v => v.id === id);
+      
+      const onMeta = () => {
+        seekBar.max = video.duration;
+        totalTimeEl.textContent = formatTime(video.duration);
+        
+        if (savedState && savedState.progress > 0 && savedState.progress < savedState.duration - 5) {
+          video.currentTime = savedState.progress;
+        }
+        video.removeEventListener('loadedmetadata', onMeta);
+        video.play().catch(e => console.log("Autoplay prevented"));
+      };
+      
+      video.addEventListener('loadedmetadata', onMeta);
+
+      // Switch views
+      browseScreen.classList.add('hidden');
+      playerScreen.classList.remove('hidden');
+      wakeControls();
+    };
+
+    const handleVideoSelect = (file, fileId = null) => {
+      if (file && file.type.startsWith('video/')) {
+        currentFile = file;
+        const id = fileId || file.name;
+        currentVideoData = { type: 'local', id: id, name: file.name };
+        
+        // Clean up old object url
+        if (video.src && video.src.startsWith('blob:')) URL.revokeObjectURL(video.src);
+        
+        const url = URL.createObjectURL(file);
+        video.src = url;
+        videoTitle.textContent = file.name;
+        
+        setupVideoPlayback(file.name);
+      } else {
+        alert("Please select a valid video file.");
+      }
+    };
+
+    const handleUrlSelect = (url) => {
+      if (!url) return;
+      currentFile = null;
+      currentVideoData = { type: 'url', id: url, name: url.split('/').pop() || url };
+      
+      if (video.src && video.src.startsWith('blob:')) URL.revokeObjectURL(video.src);
+      video.src = url;
+      videoTitle.textContent = currentVideoData.name;
+      
+      setupVideoPlayback(url);
+    };
+
+    // Drag and Drop Events
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-red-500', 'bg-red-500/10', 'scale-[1.02]');
+      dropzone.classList.remove('border-gray-700', 'bg-black/40');
+      uploadIcon.classList.replace('text-gray-400', 'text-red-500');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('border-red-500', 'bg-red-500/10', 'scale-[1.02]');
+      dropzone.classList.add('border-gray-700', 'bg-black/40');
+      uploadIcon.classList.replace('text-red-500', 'text-gray-400');
+    });
+
+    dropzone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-red-500', 'bg-red-500/10', 'scale-[1.02]');
+      dropzone.classList.add('border-gray-700', 'bg-black/40');
+      uploadIcon.classList.replace('text-red-500', 'text-gray-400');
+      
+      if (e.dataTransfer.items && 'getAsFileSystemHandle' in e.dataTransfer.items[0]) {
+        try {
+          const item = e.dataTransfer.items[0];
+          if (item.kind === 'file') {
+            const handle = await item.getAsFileSystemHandle();
+            const file = await handle.getFile();
+            const fileId = `${file.name}-${file.size}`;
+            await storeHandle(fileId, handle);
+            handleVideoSelect(file, fileId);
+            return;
+          }
+        } catch(err) {
+          console.error("Error getting file handle from drop:", err);
+        }
+      }
+      // Fallback
+      handleVideoSelect(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => handleVideoSelect(e.target.files[0]));
+    
+    selectFileBtn.addEventListener('click', async () => {
+      if ('showOpenFilePicker' in window) {
+        try {
+          const [fileHandle] = await window.showOpenFilePicker({
+            types: [{
+              description: 'Videos',
+              accept: { 'video/*': ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'] }
+            }]
+          });
+          const file = await fileHandle.getFile();
+          const fileId = `${file.name}-${file.size}`;
+          await storeHandle(fileId, fileHandle);
+          handleVideoSelect(file, fileId);
+        } catch (err) {
+          if (err.name !== 'AbortError') console.error(err);
+        }
+      } else {
+        fileInput.click(); // Fallback for older browsers
+      }
+    });
+
+    playUrlBtn.addEventListener('click', () => handleUrlSelect(urlInput.value));
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleUrlSelect(urlInput.value);
+    });
+
+    // --- Player Logic ---
+    const saveProgress = () => {
+      if (!currentVideoData || !video.duration) return;
+      
+      const currentProgress = video.currentTime;
+      const totalDuration = video.duration;
+      
+      if (currentProgress > 5 && totalDuration > 0) {
+        const history = JSON.parse(localStorage.getItem('myflix_history') || '[]');
+        const updatedHistory = history.filter(v => v.id !== currentVideoData.id);
+        
+        updatedHistory.unshift({
+          id: currentVideoData.id,
+          type: currentVideoData.type,
+          name: currentVideoData.name,
+          progress: currentProgress,
+          duration: totalDuration,
+          lastPlayed: Date.now()
+        });
+        
+        localStorage.setItem('myflix_history', JSON.stringify(updatedHistory.slice(0, 12)));
+      }
+    };
+
+    const wakeControls = () => {
+      controlsOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      playerScreen.classList.remove('cursor-none');
+      
+      if (controlsTimeout) clearTimeout(controlsTimeout);
+      
+      if (!video.paused) {
+        controlsTimeout = setTimeout(() => {
+          controlsOverlay.classList.add('opacity-0', 'pointer-events-none');
+          playerScreen.classList.add('cursor-none');
+          speedMenu.classList.add('hidden');
+        }, 3000);
+      }
+    };
+
+    const showCenterAction = (iconName) => {
+      centerActionIcon.setAttribute('data-lucide', iconName);
+      lucide.createIcons(); // Re-render specifically this icon
+      
+      centerActionOverlay.classList.remove('hidden');
+      
+      // Reset animation
+      const clone = centerActionOverlay.firstElementChild.cloneNode(true);
+      centerActionOverlay.replaceChild(clone, centerActionOverlay.firstElementChild);
+      
+      if (centerIconTimeout) clearTimeout(centerIconTimeout);
+      centerIconTimeout = setTimeout(() => {
+        centerActionOverlay.classList.add('hidden');
+      }, 500);
+    };
+
+    const togglePlay = () => {
+      if (video.paused) {
+        video.play();
+        showCenterAction('play');
+      } else {
+        video.pause();
+        showCenterAction('pause');
+      }
+    };
+
+    const skip = (seconds) => {
+      video.currentTime += seconds;
+      showCenterAction(seconds > 0 ? 'skip-forward' : 'skip-back');
+    };
+
+    const toggleFullscreen = async () => {
+      if (!document.fullscreenElement) {
+        await playerScreen.requestFullscreen();
+        maximizeIcon.classList.add('hidden');
+        minimizeIcon.classList.remove('hidden');
+      } else {
+        await document.exitFullscreen();
+        maximizeIcon.classList.remove('hidden');
+        minimizeIcon.classList.add('hidden');
+      }
+    };
+
+    // Events: Video
+    video.addEventListener('play', () => {
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
+      wakeControls();
+    });
+    
+    video.addEventListener('pause', () => {
+      playIcon.classList.remove('hidden');
+      pauseIcon.classList.add('hidden');
+      wakeControls(); // keep controls visible when paused
+    });
+
+    video.addEventListener('timeupdate', () => {
+      if (!video.duration) return;
+      seekBar.value = video.currentTime;
+      const percentage = (video.currentTime / video.duration) * 100;
+      progressFill.style.width = `${percentage}%`;
+      currentTimeEl.textContent = formatTime(video.currentTime);
+      
+      // Save progress every 10 seconds silently
+      if (Math.floor(video.currentTime) % 10 === 0) {
+        saveProgress();
+      }
+    });
+
+    video.addEventListener('waiting', () => bufferingIndicator.classList.remove('hidden'));
+    video.addEventListener('playing', () => bufferingIndicator.classList.add('hidden'));
+    video.addEventListener('click', togglePlay);
+    video.addEventListener('dblclick', toggleFullscreen);
+
+    // Events: Mouse/Controls
+    playerScreen.addEventListener('mousemove', wakeControls);
+    playerScreen.addEventListener('mouseleave', () => {
+      if (!video.paused) {
+        controlsOverlay.classList.add('opacity-0', 'pointer-events-none');
+        playerScreen.classList.add('cursor-none');
+      }
+    });
+
+    closePlayerBtn.addEventListener('click', () => {
+      saveProgress();
+      video.pause();
+      playerScreen.classList.add('hidden');
+      browseScreen.classList.remove('hidden');
+      loadHistory();
+    });
+
+    playPauseBtn.addEventListener('click', togglePlay);
+    skipBackBtn.addEventListener('click', () => skip(-10));
+    skipForwardBtn.addEventListener('click', () => skip(10));
+    
+    seekBar.addEventListener('input', (e) => {
+      video.currentTime = e.target.value;
+    });
+
+    // Volume
+    const updateVolumeUI = () => {
+      const val = video.volume;
+      volumeSlider.value = val;
+      volumeSlider.style.background = `linear-gradient(to right, white ${val * 100}%, rgba(255,255,255,0.2) ${val * 100}%)`;
+      
+      if (video.muted || val === 0) {
+        volIcon.classList.add('hidden');
+        mutedIcon.classList.remove('hidden');
+      } else {
+        volIcon.classList.remove('hidden');
+        mutedIcon.classList.add('hidden');
+      }
+    };
+
+    muteBtn.addEventListener('click', () => {
+      video.muted = !video.muted;
+      updateVolumeUI();
+    });
+
+    volumeSlider.addEventListener('input', (e) => {
+      video.volume = e.target.value;
+      if (video.volume > 0) video.muted = false;
+      updateVolumeUI();
+    });
+
+    // Picture in Picture
+    pipBtn.addEventListener('click', async () => {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await video.requestPictureInPicture();
+      }
+    });
+
+    // Fullscreen
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    // Playback Speed
+    const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    speedMenu.innerHTML = speeds.map(rate => `
+      <button class="speed-option w-full text-left px-4 py-2 hover:bg-white/10 flex items-center justify-between text-gray-400" data-rate="${rate}">
+        ${rate === 1 ? 'Normal' : `${rate}x`}
+        <i data-lucide="check" class="w-4 h-4 hidden check-icon"></i>
+      </button>
+    `).join('');
+    lucide.createIcons();
+
+    const speedOptions = document.querySelectorAll('.speed-option');
+    
+    speedBtn.addEventListener('click', () => {
+      speedMenu.classList.toggle('hidden');
+    });
+
+    speedOptions.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const rate = parseFloat(btn.getAttribute('data-rate'));
+        video.playbackRate = rate;
+        speedLabel.textContent = rate === 1 ? '1x' : `${rate}x`;
+        speedMenu.classList.add('hidden');
+        
+        // Update styling
+        speedOptions.forEach(b => {
+          b.classList.remove('text-white', 'font-bold');
+          b.classList.add('text-gray-400');
+          b.querySelector('.check-icon').classList.add('hidden');
+        });
+        btn.classList.add('text-white', 'font-bold');
+        btn.classList.remove('text-gray-400');
+        btn.querySelector('.check-icon').classList.remove('hidden');
+      });
+    });
+
+    // Set initial active speed
+    const defaultSpeedBtn = document.querySelector('.speed-option[data-rate="1"]');
+    if (defaultSpeedBtn) {
+      defaultSpeedBtn.classList.add('text-white', 'font-bold');
+      defaultSpeedBtn.classList.remove('text-gray-400');
+      defaultSpeedBtn.querySelector('.check-icon').classList.remove('hidden');
+    }
+
+    // Subtitles
+    subtitleBtn.addEventListener('click', () => {
+      if (!subtitleUrl) {
+        subtitleInput.click();
+      } else {
+        subtitlesEnabled = !subtitlesEnabled;
+        const tracks = video.textTracks;
+        if (tracks.length > 0) {
+          tracks[0].mode = subtitlesEnabled ? 'showing' : 'hidden';
+        }
+        
+        if (subtitlesEnabled) {
+          subtitleBtn.classList.add('text-white');
+          subtitleBtn.classList.remove('text-gray-400');
+          subtitleIndicator.classList.remove('hidden');
+        } else {
+          subtitleBtn.classList.remove('text-white');
+          subtitleBtn.classList.add('text-gray-400');
+          subtitleIndicator.classList.add('hidden');
+        }
+      }
+    });
+
+    subtitleInput.addEventListener('change', (e) => {
+      const subFile = e.target.files[0];
+      if (!subFile) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        let text = e.target.result;
+        if (subFile.name.endsWith('.srt')) {
+          text = srtToVtt(text);
+        }
+        const blob = new Blob([text], { type: 'text/vtt' });
+        subtitleUrl = URL.createObjectURL(blob);
+        
+        // Remove old track if exists
+        const oldTrack = video.querySelector('track');
+        if (oldTrack) oldTrack.remove();
+
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = 'English';
+        track.srclang = 'en';
+        track.src = subtitleUrl;
+        
+        video.appendChild(track);
+        
+        subtitlesEnabled = true;
+        video.textTracks[0].mode = 'showing';
+        
+        subtitleBtn.classList.add('text-white');
+        subtitleBtn.classList.remove('text-gray-400');
+        subtitleIndicator.classList.remove('hidden');
+        subtitleBtn.title = "Toggle Subtitles";
+      };
+      reader.readAsText(subFile);
+    });
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (playerScreen.classList.contains('hidden')) return; // Only if player is active
+      if (document.activeElement.tagName.toLowerCase() === 'input') return;
+      
+      switch(e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          skip(10);
+          break;
+        case 'arrowleft':
+          e.preventDefault();
+          skip(-10);
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'm':
+          e.preventDefault();
+          video.muted = !video.muted;
+          updateVolumeUI();
+          break;
+      }
+      wakeControls();
+    });
+
+    // Cleanup before unload
+    window.addEventListener('beforeunload', () => {
+      saveProgress();
+      if (video.src && video.src.startsWith('blob:')) URL.revokeObjectURL(video.src);
+      if (subtitleUrl) URL.revokeObjectURL(subtitleUrl);
+    });
+
+    // Initialize
+    loadHistory();
+    updateVolumeUI();
+
+  </script>
+</body>
+</html>
